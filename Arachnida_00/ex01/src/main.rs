@@ -1,3 +1,5 @@
+use http::{Request, Response};
+
 /* 
  * Trim spaces and removes useless values
  */
@@ -54,22 +56,38 @@ fn  find_flags(value: &String, _max_depth: &mut String, _path: &mut String) {
     }
 }
 
+fn send_request(path: &String) {
+    let request = Request::builder()
+        .uri(path.as_str()).header("User-Agent", "awesome/1.0")
+        .body(());
+    dbg!(request);
+}
+
 fn main() {
-    let args = std::env::args().skip(2);
+    let args: std::iter::Skip<std::env::Args> = std::env::args().skip(2);
     let mut _max_depth = String::from("5");
     let mut _path: String = String::from("./data/");
     let mut _url: String = String::from("");
-
-    
+    let mut _is_recursive: bool = false;
+    let mut _concatenate_flag: String = String::from("");
     for i in args {
-        if i.find('-') == Some(0) {
-            find_flags(&i, &mut _max_depth, &mut _path);
+        if i == "-rl" || i == "-rp" || i == "-p" || i == "-l" {
+            _concatenate_flag = i;
         } else {
-            _url = String::from(i);
+            if i.find('-') == Some(0) || _concatenate_flag != "" {
+                _concatenate_flag += i.as_str();
+                find_flags(&_concatenate_flag, &mut _max_depth, &mut _path);
+                _concatenate_flag = String::from("");
+            } else {
+                _url = String::from(i);
+            }
         }
     }
     println!("_max_depth {_max_depth} _path {_path}");
     if _url != "" {
         println!("url: {}", _url);
+        send_request(&_url);
+    } else {
+        eprintln!("An url is needed.");
     }
 }
