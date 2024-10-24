@@ -1,2 +1,12 @@
 Arachnida_00/ex01/target/
 Arachnida_00/ex01/Cargo.lock
+Arachnida_00/ex01/*.jpg
+Arachnida_00/ex01/*.jpeg
+Arachnida_00/ex01/*.png
+Arachnida_00/ex01/*.gif
+Arachnida_00/ex01/*.bmp
+Arachnida_00/ex01/*/*.jpg
+Arachnida_00/ex01/*/*.jpeg
+Arachnida_00/ex01/*/*.png
+Arachnida_00/ex01/*/*.gif
+Arachnida_00/ex01/*/*.bmp

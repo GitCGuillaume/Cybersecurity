@@ -1,31 +1,33 @@
+use std::io::prelude::*;
+use std::fs::{create_dir_all, File};
 use tokio;
-use reqwest::{self, Client, Error, Response};
+use reqwest::{ header::USER_AGENT, Client, Error, Response };
 
 /* 
  * Trim spaces and removes useless values
  */
-fn parse_value(value: &String, pos: usize, fill_string: &mut String) {
-    let mut _tmp: String = String::from(value);
+fn parse_value(_value: &String, _pos: usize, _fill_string: &mut String) {
+    let mut _tmp: String = String::from(_value);
 
-    _tmp.replace_range(..pos, "");
-    let mut _str: &str = _tmp.trim_start();
+    _tmp.replace_range(.._pos, "");
+    let _str: &str = _tmp.trim_start();
     let _space_pos: Option<usize> = _str.find(" ");
 
-    fill_string.clear();
-    fill_string.insert_str(0, _str);
+    _fill_string.clear();
+    _fill_string.insert_str(0, _str);
     if _space_pos != None {
-        fill_string.replace_range(_space_pos.unwrap().., "");
+        _fill_string.replace_range(_space_pos.unwrap().., "");
     }
 }   
 
 /* Find starting position from flags */
 fn  parse_flags(value: &String, flag: &str) -> (bool, usize) {
-    let _first_pos: Option<usize> = value.rfind(flag);
+    let first_pos: Option<usize> = value.rfind(flag);
 
-    if _first_pos != None {
-        let mut _str: &str = &value[_first_pos.unwrap()..];
+    if first_pos != None {
+        let mut _str: &str = &value[first_pos.unwrap()..];
 
-        return (true, _first_pos.unwrap());
+        return (true, first_pos.unwrap());
     }
     return (false, 0);
 }
@@ -34,85 +36,176 @@ fn  parse_flags(value: &String, flag: &str) -> (bool, usize) {
  * Get position and which flags are used from a list a flags
  * then register the asked value
  */
-fn  find_flags(value: &String, mut _is_recursive: bool,
+fn  find_flags(_value: &String, mut _is_recursive: bool,
     _max_depth: &mut String, _path: &mut String) {
-    let (_rl_bool, _rl_pos) = parse_flags(value, &"-rl");
-    let (_rp_bool, _rp_pos) = parse_flags(value, &"-rp");
-    let (_l_bool, _l_pos) = parse_flags(value, &"-l");
-    let (_p_bool, _p_pos) = parse_flags(value, &"-p");
+    let (_rl_bool, _rl_pos) = parse_flags(_value, &"-rl");
+    let (_rp_bool, _rp_pos) = parse_flags(_value, &"-rp");
+    let (_l_bool, _l_pos) = parse_flags(_value, &"-l");
+    let (_p_bool, _p_pos) = parse_flags(_value, &"-p");
 
     //println!("{_rl_bool}, {_rp_bool}, {_l_bool}, {_p_bool}");
     if _rl_bool || _l_bool {
         if _l_pos <= _rl_pos && _rl_bool {
             _is_recursive = true;
-            parse_value(value, _rl_pos + 3, _max_depth);
+            parse_value(_value, _rl_pos + 3, _max_depth);
         } else {
-            parse_value(value, _l_pos + 2, _max_depth);
+            parse_value(_value, _l_pos + 2, _max_depth);
         }
     }
     if _rp_bool || _p_bool {
         if _p_pos <= _rp_pos && _rp_bool {
-            parse_value(value, _rp_pos + 3, _path);
+            parse_value(_value, _rp_pos + 3, _path);
         } else {
-            parse_value(value, _p_pos + 2, _path);
+            parse_value(_value, _p_pos + 2, _path);
         }
     }
 }
 
-async fn send(_client: &Result<Client, Error>, _path: &String) -> Result<Response, Error> {
-    let _res: Result<Response, Error> = _client.as_ref().unwrap().get(_path.as_str()).send().await;
+async fn send_url_file(_client: &Result<Client, Error>, _path: &String) -> Result<(), Error> {
+    let res = _client.as_ref().unwrap()
+        .get(_path.as_str())
+        .header(USER_AGENT, "Reqwest/0.12.8")
+        .send().await;
 
-    return _res
+    match res {
+        Ok(i) => {
+            let mut full_path: String = ".".to_owned() + i.url().path();
+            let path_clone = full_path.clone();
+            eprintln!("{full_path:?}");
+            let idx = full_path.rfind("/");
+            match idx {
+                Some(id) => {
+                    println!("{id}");
+                    if 1 < id {
+                        let mut file_name = full_path.split_off(id);
+                        file_name.insert(0, '.');
+                        println!("{file_name}");
+                        create_dir_all(full_path);
+                        let buffer = File::create(path_clone);
+                        if buffer.is_ok() {
+                            let test = buffer.unwrap().write_all(&i.bytes().await?);
+                            match test {
+                                Ok(i) => {
+                                    println!("written: {i:?}");
+                                    ()
+                                },
+                                Err(e) => {
+                                    eprint!("Couldn't write to file : {e}");
+                                    ()
+                                },
+                            }
+                        } else {
+                            eprintln!("not okay");
+                        }
+                    } else {
+
+                    }
+                },
+                None => {
+                    eprintln!("Url Path should have at least a slash.");
+                },
+            }
+            //let folder = full_path.split_off(idx.unwrap());
+            //create_dir_all(full_path.clone());
+            ()
+        },
+        Err(e) => {
+            eprintln!("Error: {e:?}");
+            ()
+        }
+    };
+    //dbg!(res);
+    //println!("{res:?}");
+    /*
+    let res_bytes = res?.bytes().await;
+    if res_bytes .is_err() {
+        
+    }
+    if res_bytes.is_ok() {
+    //    dbg!(&res_bytes);
+        let buffer = File::create("foo.png");
+        if buffer.is_ok() {
+            let aa = buffer.unwrap().write_all(&res_bytes.unwrap());
+            //couldn't write
+        }
+    }*/
+    Ok(())
+    //
+    //
+}
+
+async fn send_url(_client: &Result<Client, Error>, _path: &String) -> Result<String, Error> {
+    let res: Result<String, Error> = _client.as_ref().unwrap().get(_path.as_str()).header(USER_AGENT, "Reqwest/0.12.8").send().await?.text().await;
+    //println!("{res:?}");
+    return res
 }
 
 async fn connect_client(_path: &String) -> Result<Client, Error> {
-    let _client: Result<Client, Error> = reqwest::Client::builder().build();
+    let client: Result<Client, Error> = reqwest::Client::builder().build();
 
-    return _client
+    return client
 }
 
-async fn send_request(_path: &mut String) {
+fn parse_request(res: &String) {
+    let arr: [String; 5] = [
+        ".jpg".to_string(), ".jpeg".to_string(),
+        ".png".to_string(), ".gif".to_string(),
+        ".bmp".to_string()
+    ];
+    
+}
+
+async fn send_request(_path: &String) {
+    let arr: [String; 5] = [
+        ".jpg".to_string(), ".jpeg".to_string(),
+        ".png".to_string(), ".gif".to_string(),
+        ".bmp".to_string()
+    ];
     /*if !_path.starts_with("https://") {
         _path.insert_str(0, "https://");
     }*/
-    let _client: Result<Client, Error> = connect_client(&_path).await;
-    let _res: Result<Response, Error> = send(&_client, &_path).await;
+    let client: Result<Client, Error> = connect_client(&_path).await;
+    //if link not part of arr
+    let res: Result<String, Error> = send_url(&client, &_path).await;
 
-    if _res.is_ok() {
-        dbg!(_res);
+    if res.is_ok() {
+        let res_unwrap: String = res.unwrap();
+    //    println!("{res_unwrap:?}");
+        parse_request(&res_unwrap);
+        send_url_file(&client, _path).await;
     }
 }
 
 #[tokio::main]
 async fn main() {
     let args: std::iter::Skip<std::env::Args> = std::env::args().skip(2);
-    let mut _max_depth = String::from("5");
-    let mut _path: String = String::from("./data/");
-    let mut _url: String = String::from("");
-    let mut _is_recursive: bool = false;
-    let mut _concatenate_flag: String = String::from("");
+    let mut max_depth = String::from("5");
+    let mut path: String = String::from("./data/");
+    let mut url: String = String::from("");
+    let mut is_recursive: bool = false;
+    let mut concatenate_flag: String = String::from("");
 
     for i in args {
         if i.starts_with("-r") {
-            _is_recursive = true;
+            is_recursive = true;
         }
         if i == "-rl" || i == "-rp" || i == "-p" || i == "-l" {
-            _concatenate_flag = i;
+            concatenate_flag = i;
         } else {
-            if i.find('-') == Some(0) || _concatenate_flag != "" {
-                _concatenate_flag += i.as_str();
-                find_flags(&_concatenate_flag, _is_recursive,
-                    &mut _max_depth, &mut _path);
-                _concatenate_flag = String::from("");
+            if i.find('-') == Some(0) || concatenate_flag != "" {
+                concatenate_flag += i.as_str();
+                find_flags(&concatenate_flag, is_recursive,
+                    &mut max_depth, &mut path);
+                concatenate_flag = String::from("");
             } else {
-                _url = String::from(i);
+                url = String::from(i);
             }
         }
     }
-    println!("_r: {_is_recursive} _max_depth {_max_depth} _path {_path}");
-    if _url != "" {
-        println!("url: {}", _url);
-        send_request(&mut _url).await;
+    println!("_r: {is_recursive} max_depth {max_depth} path {path}");
+    if url != "" {
+        println!("url: {}", url);
+        send_request(&mut url).await;
 
     } else {
         eprintln!("An url is needed.");
