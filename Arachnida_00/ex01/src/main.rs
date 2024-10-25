@@ -15,21 +15,26 @@ fn parse_value(_value: &String, _pos: usize, _fill_string: &mut String) {
 
     _fill_string.clear();
     _fill_string.insert_str(0, _str);
-    if _space_pos != None {
-        _fill_string.replace_range(_space_pos.unwrap().., "");
+    match _space_pos {
+        Some(pos) => {
+            _fill_string.replace_range(pos.., "");
+        },
+        None => {},
     }
-}   
+}
 
 /* Find starting position from flags */
 fn  parse_flags(value: &String, flag: &str) -> (bool, usize) {
     let first_pos: Option<usize> = value.rfind(flag);
+    
+    match first_pos {
+        Some(pos) => {
+            let mut _str: &str = &value[pos..];
 
-    if first_pos != None {
-        let mut _str: &str = &value[first_pos.unwrap()..];
-
-        return (true, first_pos.unwrap());
-    }
-    return (false, 0);
+            return (true, pos);
+        },
+        None => return (false, 0)
+    };
 }
 
 /*
@@ -43,7 +48,6 @@ fn  find_flags(_value: &String, mut _is_recursive: bool,
     let (_l_bool, _l_pos) = parse_flags(_value, &"-l");
     let (_p_bool, _p_pos) = parse_flags(_value, &"-p");
 
-    //println!("{_rl_bool}, {_rp_bool}, {_l_bool}, {_p_bool}");
     if _rl_bool || _l_bool {
         if _l_pos <= _rl_pos && _rl_bool {
             _is_recursive = true;
@@ -61,52 +65,122 @@ fn  find_flags(_value: &String, mut _is_recursive: bool,
     }
 }
 
-async fn send_url_file(_client: &Result<Client, Error>, _path: &String) -> Result<(), Error> {
-    let res = _client.as_ref().unwrap()
-        .get(_path.as_str())
+/*
+ * https://www.iana.org/assignments/media-types/media-types.xhtml#image
+ * Check if content-type is valid
+ */
+fn check_image_type(content_type: Option<&reqwest::header::HeaderValue>) -> bool {
+    let arr: [String; 5] = [
+        "image/jpg".to_string(), "image/jpeg".to_string(),
+        "image/png".to_string(), "image/gif".to_string(),
+        "image/bmp".to_string()
+    ];
+    let result: bool = match content_type {
+        Some(content) => {
+            let name: Result<&str, reqwest::header::ToStrError> = content.to_str();
+            let mut is_same = false;
+            match name {
+                Ok(value) => {
+                    for i in arr {
+                        println!("{i} {value}");
+                        if i == value {
+                            is_same = true;
+                        }
+                    }
+                    ()
+                },
+                Err(_) => {
+                    ()
+                },
+            };
+            is_same
+        },
+        None => {
+            return false;
+        },
+    };
+    result
+}
+
+/*
+    Create directory and it's childs
+*/
+fn create_dir(_dir_path: &mut String, id: usize) {
+    let _file_name: String = _dir_path.split_off(id);
+    let result_dir: Result<(), std::io::Error> = create_dir_all(_dir_path);
+
+    match result_dir {
+        Ok(_) => {},
+        Err(e) => {
+            eprintln!("Something went wrong wih directories creation: {e}");
+            ()
+        },
+    }
+}
+
+/*
+ * Create and write in file
+ */
+fn  create_image(_img_path: &String, i: &[u8]) {
+    let buffer: Result<File, std::io::Error> = File::create_new(_img_path);
+
+    match buffer {
+        Ok(mut f) => {
+            let res: Result<(), std::io::Error> = f.write_all(i);
+            match res {
+                Ok(result) => println!("{result:?}"),
+                Err(e) => {
+                    eprintln!("Couldn't write to file: {e}");
+                },
+            }
+        },
+        Err(e) => {
+            eprintln!("Error: {e}");
+        },
+    }
+}
+
+/* Start of image creation, call all functions to create an image */
+async fn process_image(i: Response) -> Result<(), Error> {
+    let content_type: Option<&reqwest::header::HeaderValue>
+                            = i.headers().get("content-type");
+    let res: bool = check_image_type(content_type);
+
+    if res == false {
+        eprintln!("File is not part of accepted type-content");
+        return Ok(());
+    }
+    let mut relative_path: String = ".".to_owned() + i.url().path();
+    let path_clone = relative_path.clone();
+    let idx: Option<usize> = relative_path.rfind("/");
+
+    match idx {
+        Some(id) => {
+            if 1 < id {
+                create_dir(&mut relative_path, id);
+                create_image(&path_clone, &i.bytes().await?);
+            } else {
+                create_image(&path_clone, &i.bytes().await?);
+            }
+        },
+        None => {
+            eprintln!("Url Path should have at least a slash.");
+        },
+    }
+    Ok(())
+} 
+
+/*
+ * Function wrapping image creation and validation
+ */
+async fn send_url_file(_client: &Client, _path: &String) -> Result<(), Error> {
+    let res: Result<Response, Error> = _client.get(_path.as_str())
         .header(USER_AGENT, "Reqwest/0.12.8")
         .send().await;
 
     match res {
         Ok(i) => {
-            let mut full_path: String = ".".to_owned() + i.url().path();
-            let path_clone = full_path.clone();
-            eprintln!("{full_path:?}");
-            let idx = full_path.rfind("/");
-            match idx {
-                Some(id) => {
-                    println!("{id}");
-                    if 1 < id {
-                        let mut file_name = full_path.split_off(id);
-                        file_name.insert(0, '.');
-                        println!("{file_name}");
-                        create_dir_all(full_path);
-                        let buffer = File::create(path_clone);
-                        if buffer.is_ok() {
-                            let test = buffer.unwrap().write_all(&i.bytes().await?);
-                            match test {
-                                Ok(i) => {
-                                    println!("written: {i:?}");
-                                    ()
-                                },
-                                Err(e) => {
-                                    eprint!("Couldn't write to file : {e}");
-                                    ()
-                                },
-                            }
-                        } else {
-                            eprintln!("not okay");
-                        }
-                    } else {
-
-                    }
-                },
-                None => {
-                    eprintln!("Url Path should have at least a slash.");
-                },
-            }
-            //let folder = full_path.split_off(idx.unwrap());
-            //create_dir_all(full_path.clone());
+            let _ = process_image(i).await;
             ()
         },
         Err(e) => {
@@ -114,30 +188,23 @@ async fn send_url_file(_client: &Result<Client, Error>, _path: &String) -> Resul
             ()
         }
     };
-    //dbg!(res);
-    //println!("{res:?}");
-    /*
-    let res_bytes = res?.bytes().await;
-    if res_bytes .is_err() {
-        
-    }
-    if res_bytes.is_ok() {
-    //    dbg!(&res_bytes);
-        let buffer = File::create("foo.png");
-        if buffer.is_ok() {
-            let aa = buffer.unwrap().write_all(&res_bytes.unwrap());
-            //couldn't write
-        }
-    }*/
     Ok(())
-    //
-    //
 }
 
-async fn send_url(_client: &Result<Client, Error>, _path: &String) -> Result<String, Error> {
-    let res: Result<String, Error> = _client.as_ref().unwrap().get(_path.as_str()).header(USER_AGENT, "Reqwest/0.12.8").send().await?.text().await;
-    //println!("{res:?}");
-    return res
+/*
+ * Call server (request) to parse
+ */
+async fn send_url(_client: &Client, _path: &String) -> Result<String, Error> {
+    let res: Result<String, Error> = match _client.get(_path.as_str()).header(USER_AGENT, "Reqwest/0.12.8").send().await {
+        Ok(value) => {
+            value.text().await
+        },
+        Err(e) => {
+            eprintln!("Error: {e}");
+            Err(e)
+        },
+    };
+    res
 }
 
 async fn connect_client(_path: &String) -> Result<Client, Error> {
@@ -164,15 +231,26 @@ async fn send_request(_path: &String) {
     /*if !_path.starts_with("https://") {
         _path.insert_str(0, "https://");
     }*/
-    let client: Result<Client, Error> = connect_client(&_path).await;
-    //if link not part of arr
-    let res: Result<String, Error> = send_url(&client, &_path).await;
-
-    if res.is_ok() {
-        let res_unwrap: String = res.unwrap();
-    //    println!("{res_unwrap:?}");
-        parse_request(&res_unwrap);
-        send_url_file(&client, _path).await;
+    let client: &Result<Client, Error> = &connect_client(&_path).await;
+    match client {
+        Ok(c) => {
+            //call if url not picture
+            let res: Result<String, Error> = send_url(c, &_path).await;
+            match res {
+                Ok(r) => {
+                    println!("{r}");
+                    //call parsing part
+                },
+                Err(_e) => {
+                    //error is already written from send_url()
+                },
+            }
+            //call if url picture
+            send_url_file(c, _path).await;
+        },
+        Err(e) => {
+            eprintln!("Creation client Error: {e}");
+        },
     }
 }
 
