@@ -2,6 +2,7 @@ use std::io::prelude::*;
 use std::fs::{create_dir_all, File};
 use tokio;
 use reqwest::{ header::USER_AGENT, Client, Error, Response };
+use select::{ document };
 
 /* 
  * Trim spaces and removes useless values
@@ -178,29 +179,28 @@ async fn send_url_file(_client: &Client, _path: &String) -> Result<(), Error> {
         .header(USER_AGENT, "Reqwest/0.12.8")
         .send().await;
 
-    match res {
+    let res: Result<(), Error> = match res {
         Ok(i) => {
             let _ = process_image(i).await;
-            ()
+            Ok(())
         },
         Err(e) => {
             eprintln!("Error: {e:?}");
-            ()
+            Err(e)
         }
     };
-    Ok(())
+    res
 }
 
 /*
  * Call server (request) to parse
  */
-async fn send_url(_client: &Client, _path: &String) -> Result<String, Error> {
+async fn get_url_text(_client: &Client, _path: &String) -> Result<String, Error> {
     let res: Result<String, Error> = match _client.get(_path.as_str()).header(USER_AGENT, "Reqwest/0.12.8").send().await {
         Ok(value) => {
             value.text().await
         },
         Err(e) => {
-            eprintln!("Error: {e}");
             Err(e)
         },
     };
@@ -213,13 +213,22 @@ async fn connect_client(_path: &String) -> Result<Client, Error> {
     return client
 }
 
-fn parse_request(res: &String) {
-    let arr: [String; 5] = [
-        ".jpg".to_string(), ".jpeg".to_string(),
-        ".png".to_string(), ".gif".to_string(),
-        ".bmp".to_string()
-    ];
-    
+/*
+ * Resolve array and return a boolean
+ */
+fn  url_extension_resolver(_path: &String, arr: &[String; 5]) -> bool {
+    for i in arr {
+        if _path.ends_with(i) {
+            return true;
+        }
+    }
+    false
+}
+
+fn parse_document(text: &String) {
+    let doc = document::Document::from(text.as_str());
+    let dd = doc.find(select::predicate::Name("a"));
+    dbg!(dd);
 }
 
 async fn send_request(_path: &String) {
@@ -234,19 +243,22 @@ async fn send_request(_path: &String) {
     let client: &Result<Client, Error> = &connect_client(&_path).await;
     match client {
         Ok(c) => {
-            //call if url not picture
-            let res: Result<String, Error> = send_url(c, &_path).await;
-            match res {
-                Ok(r) => {
-                    println!("{r}");
-                    //call parsing part
-                },
-                Err(_e) => {
-                    //error is already written from send_url()
-                },
+            if url_extension_resolver(_path, &arr) {
+                println!("true");
+                let _ = send_url_file(c, _path).await;
+            } else {
+                println!("false");
+                let res: Result<String, Error> = get_url_text(c, &_path).await;
+
+                match res {
+                    Ok(r) => {
+                        parse_document(&r);
+                    },
+                    Err(e) => {
+                        eprintln!("Error: {e}");
+                    },
+                }
             }
-            //call if url picture
-            send_url_file(c, _path).await;
         },
         Err(e) => {
             eprintln!("Creation client Error: {e}");
