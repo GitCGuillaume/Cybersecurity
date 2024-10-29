@@ -1,8 +1,10 @@
 use std::io::prelude::*;
 use std::fs::{create_dir_all, File};
+use select::document::Document;
+use select::predicate::{Any, Element, Text, Name};
 use tokio;
 use reqwest::{ header::USER_AGENT, Client, Error, Response };
-use select::{ document };
+use select::{ document};
 
 /* 
  * Trim spaces and removes useless values
@@ -174,8 +176,8 @@ async fn process_image(i: Response) -> Result<(), Error> {
 /*
  * Function wrapping image creation and validation
  */
-async fn send_url_file(_client: &Client, _path: &String) -> Result<(), Error> {
-    let res: Result<Response, Error> = _client.get(_path.as_str())
+async fn send_url_file(_client: &Client, _path: &str) -> Result<(), Error> {
+    let res: Result<Response, Error> = _client.get(_path)
         .header(USER_AGENT, "Reqwest/0.12.8")
         .send().await;
 
@@ -195,8 +197,8 @@ async fn send_url_file(_client: &Client, _path: &String) -> Result<(), Error> {
 /*
  * Call server (request) to parse
  */
-async fn get_url_text(_client: &Client, _path: &String) -> Result<String, Error> {
-    let res: Result<String, Error> = match _client.get(_path.as_str()).header(USER_AGENT, "Reqwest/0.12.8").send().await {
+async fn get_url_text(_client: &Client, _path: &str) -> Result<String, Error> {
+    let res: Result<String, Error> = match _client.get(_path).header(USER_AGENT, "Reqwest/0.12.8").send().await {
         Ok(value) => {
             value.text().await
         },
@@ -216,7 +218,7 @@ async fn connect_client(_path: &String) -> Result<Client, Error> {
 /*
  * Resolve array and return a boolean
  */
-fn  url_extension_resolver(_path: &String, arr: &[String; 5]) -> bool {
+fn  url_extension_resolver(_path: &str, arr: &[String; 5]) -> bool {
     for i in arr {
         if _path.ends_with(i) {
             return true;
@@ -225,13 +227,53 @@ fn  url_extension_resolver(_path: &String, arr: &[String; 5]) -> bool {
     false
 }
 
-fn parse_document(text: &String) {
-    let doc = document::Document::from(text.as_str());
-    let dd = doc.find(select::predicate::Name("a"));
-    dbg!(dd);
+fn  get_links(cli:&Client, arr: &[String; 5],
+    _doc: &Document, v_fill: &mut Vec<String>) -> bool {
+    let img: document::Find<'_, Name<&'static str>> = _doc.find(Name("a"));
+    let mut find_input = false;
+
+    img.filter_map(|f| f.attr("href"))
+        .for_each(|f| {
+            //println!("{f}");
+            find_input = true;
+            v_fill.push(f.to_owned());
+            //url_helper(cli, arr, &"".to_string(), _max_depth);
+        });
+    find_input
 }
 
-async fn send_request(_path: &String) {
+fn parse_document(cli: &Client, text: &String,
+    arr: &[String; 5], v_fill: &mut Vec<String>) -> bool {
+    let doc: Document = document::Document::from(text.as_str());
+
+    return get_links(cli, arr, &doc, v_fill);
+}
+
+async fn url_helper(cli: &Client, arr: &[String; 5],
+    v_list: &Vec<String>, v_fill: &mut Vec<String>) -> bool {
+    
+    for i in v_list {
+        if url_extension_resolver(i, &arr) {
+            //println!("true");
+            let _ = send_url_file(cli, i).await;
+        } else {
+            //println!("false");
+            let res: Result<String, Error> = get_url_text(cli, &i).await;
+    
+            match res {
+                Ok(r) => {
+                    return parse_document(cli, &r, arr, v_fill);
+                },
+                Err(e) => {
+                    eprintln!("Error: {e}");
+                },
+            }
+        }
+    }
+    false
+}
+
+async fn connect(_path: &String, _max_depth: i32) {
     let arr: [String; 5] = [
         ".jpg".to_string(), ".jpeg".to_string(),
         ".png".to_string(), ".gif".to_string(),
@@ -241,24 +283,29 @@ async fn send_request(_path: &String) {
         _path.insert_str(0, "https://");
     }*/
     let client: &Result<Client, Error> = &connect_client(&_path).await;
+
     match client {
         Ok(c) => {
-            if url_extension_resolver(_path, &arr) {
-                println!("true");
-                let _ = send_url_file(c, _path).await;
-            } else {
-                println!("false");
-                let res: Result<String, Error> = get_url_text(c, &_path).await;
+            let mut v1: Vec<String> = Vec::new();
+            let mut v2: Vec<String> = Vec::new();
 
-                match res {
-                    Ok(r) => {
-                        parse_document(&r);
-                    },
-                    Err(e) => {
-                        eprintln!("Error: {e}");
-                    },
+            v1.reserve(1024);
+            v1.reserve(1024);
+            v1.push(_path.to_owned());
+            //loop max_depth
+            for i in 0.._max_depth {
+                //choose vector to loop through, and vector to fill
+                if v1.len() == 0 {
+                    //v2, v1 gogo
+                    url_helper(&c, &arr, &v2, &mut v1).await;
+                } else {
+                    //v1, v2 gogo
+                    url_helper(&c, &arr, &v1, &mut v2).await;
                 }
             }
+            dbg!(v2);
+            println!("{_max_depth}");
+            //println!("{i}");
         },
         Err(e) => {
             eprintln!("Creation client Error: {e}");
@@ -295,8 +342,15 @@ async fn main() {
     println!("_r: {is_recursive} max_depth {max_depth} path {path}");
     if url != "" {
         println!("url: {}", url);
-        send_request(&mut url).await;
-
+        let max_depth: Result<i32, _> = max_depth.parse();
+        match max_depth {
+            Ok(max) => {
+                connect(&url, max).await;
+            },
+            Err(_) => {
+                eprint!("Please provide a valid max depth.");
+            },
+        }
     } else {
         eprintln!("An url is needed.");
     }
