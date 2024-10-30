@@ -1,10 +1,17 @@
+use std::collections::HashMap ;
 use std::io::prelude::*;
-use std::fs::{create_dir_all, File};
+use std::fs::{ create_dir_all, File };
 use select::document::Document;
-use select::predicate::{Any, Element, Text, Name};
+use select::predicate::Name;
 use tokio;
 use reqwest::{ header::USER_AGENT, Client, Error, Response };
-use select::{ document};
+use select::document;
+
+const ARR_TYPE: [&str; 5] = [
+    ".jpg", ".jpeg",
+    ".png", ".gif",
+    ".bmp"
+];
 
 /* 
  * Trim spaces and removes useless values
@@ -73,7 +80,7 @@ fn  find_flags(_value: &String, mut _is_recursive: bool,
  * Check if content-type is valid
  */
 fn check_image_type(content_type: Option<&reqwest::header::HeaderValue>) -> bool {
-    let arr: [String; 5] = [
+    let arr_type: [String; 5] = [
         "image/jpg".to_string(), "image/jpeg".to_string(),
         "image/png".to_string(), "image/gif".to_string(),
         "image/bmp".to_string()
@@ -84,7 +91,7 @@ fn check_image_type(content_type: Option<&reqwest::header::HeaderValue>) -> bool
             let mut is_same = false;
             match name {
                 Ok(value) => {
-                    for i in arr {
+                    for i in arr_type {
                         println!("{i} {value}");
                         if i == value {
                             is_same = true;
@@ -180,9 +187,10 @@ async fn send_url_file(_client: &Client, _path: &str) -> Result<(), Error> {
     let res: Result<Response, Error> = _client.get(_path)
         .header(USER_AGENT, "Reqwest/0.12.8")
         .send().await;
-
+    ;
     let res: Result<(), Error> = match res {
         Ok(i) => {
+            println!("azeezz {:?}", i);
             let _ = process_image(i).await;
             Ok(())
         },
@@ -209,60 +217,119 @@ async fn get_url_text(_client: &Client, _path: &str) -> Result<String, Error> {
     res
 }
 
-async fn connect_client(_path: &String) -> Result<Client, Error> {
-    let client: Result<Client, Error> = reqwest::Client::builder().build();
-
-    return client
-}
-
 /*
  * Resolve array and return a boolean
  */
-fn  url_extension_resolver(_path: &str, arr: &[String; 5]) -> bool {
-    for i in arr {
+fn  url_extension_resolver(_path: &str) -> bool {
+    for i in ARR_TYPE {
         if _path.ends_with(i) {
+            println!("FOUND");
             return true;
         }
     }
     false
 }
 
-fn  get_links(cli:&Client, arr: &[String; 5],
-    _doc: &Document, v_fill: &mut Vec<String>) -> bool {
-    let img: document::Find<'_, Name<&'static str>> = _doc.find(Name("a"));
-    let mut find_input = false;
+fn  try_insert_hmap(hmap_url: &mut HashMap<String, bool>, f: &String) {
+    let k: Option<(&String, &bool)> = hmap_url.get_key_value(f);
+println!("dd: {f}");
+    match k {
+        Some(_) => (),
+        None => {
+            hmap_url.insert(f.to_owned(), false);
+        },
+    }
+}
+//^[https://].*/
+fn  get_links(_url: &String, _doc: &Document,
+             hmap_url: &mut HashMap<String, bool>) -> bool {
+    let a_dom: document::Find<'_, Name<&str>> = _doc.find(Name("a"));
+    let mut find_input: bool = false;
 
-    img.filter_map(|f| f.attr("href"))
+    a_dom.filter_map(|f| f.attr("href"))
         .for_each(|f| {
-            //println!("{f}");
             find_input = true;
-            v_fill.push(f.to_owned());
-            //url_helper(cli, arr, &"".to_string(), _max_depth);
+            if !f.starts_with("http") {
+                try_insert_hmap(hmap_url, &String::from(_url.clone() + f));
+            } else {
+                try_insert_hmap(hmap_url, &f.to_owned());
+            }
         });
     find_input
 }
 
-fn parse_document(cli: &Client, text: &String,
-    arr: &[String; 5], v_fill: &mut Vec<String>) -> bool {
-    let doc: Document = document::Document::from(text.as_str());
+async fn  get_images(_url: &String, cli: &Client,
+               _doc: &Document, hmap_url: &mut HashMap<String, bool>) {
+    let img_dom: document::Find<'_, Name<&str>> = _doc.find(Name("img"));
+    //let mut find_input: bool = false;
 
-    return get_links(cli, arr, &doc, v_fill);
+        for f in img_dom.filter_map(|f| f.attr("src")) {
+          //  find_input = true;
+            println!("ele: {f}");
+            if !f.starts_with("http") {
+                //get parent url
+                println!("{f}");
+                /*try_insert_hmap(hmap_url, &String::from(_url.clone() + f));
+                if url_extension_resolver(&String::from(_url.clone() + f)) {
+                    let _ = send_url_file(cli, &String::from(_url.clone() + f));
+                }*/
+            } else {
+                try_insert_hmap(hmap_url, &f.to_owned());
+                if url_extension_resolver(&f) {
+                    println!("NII");
+                    let _ = send_url_file(cli, &f).await;
+                }
+            }
+        }
+    
+        /* .for_each(| f| {
+            find_input = true;
+            println!("{f}");
+            if !f.starts_with("http") {
+                //get parent url
+                println!("{f}");
+                /*try_insert_hmap(hmap_url, &String::from(_url.clone() + f));
+                if url_extension_resolver(&String::from(_url.clone() + f)) {
+                    let _ = send_url_file(cli, &String::from(_url.clone() + f));
+                }*/
+            } else {
+                try_insert_hmap(hmap_url, &f.to_owned());
+                if url_extension_resolver(&f) {
+                    println!("NII");
+                    let _ = send_url_file(cli, &f).await;
+                }
+            }
+        });*/
 }
 
-async fn url_helper(cli: &Client, arr: &[String; 5],
-    v_list: &Vec<String>, v_fill: &mut Vec<String>) -> bool {
-    
-    for i in v_list {
-        if url_extension_resolver(i, &arr) {
-            //println!("true");
-            let _ = send_url_file(cli, i).await;
+async fn parse_document(_url: &String, cli: &Client,
+                 text: &String, hmap_url: &mut HashMap<String, bool>) -> bool {
+    let doc: Document = document::Document::from(text.as_str());
+    let mut _find_input: bool = false;
+
+    //_find_input = get_links(_url, &doc, hmap_url);
+    get_images(_url, cli, &doc, hmap_url).await;
+    _find_input
+}
+
+async fn url_helper(_url: &String, cli: &Client,
+    hmap_url: &mut HashMap<String, bool>) -> bool {
+    let mut find_input: bool = false;
+
+    for (k, _v) in hmap_url.clone() {
+        println!("Url: {k}");
+        if _v == true {
+            continue;
+        }
+        hmap_url.insert(k.to_owned(), true);
+        if url_extension_resolver(&k) {
+            let _ = send_url_file(cli, &k).await;
         } else {
-            //println!("false");
-            let res: Result<String, Error> = get_url_text(cli, &i).await;
+            let res: Result<String, Error> = get_url_text(cli, &k).await;
     
             match res {
                 Ok(r) => {
-                    return parse_document(cli, &r, arr, v_fill);
+                    find_input = parse_document(_url, cli, &r, hmap_url).await;
                 },
                 Err(e) => {
                     eprintln!("Error: {e}");
@@ -270,42 +337,31 @@ async fn url_helper(cli: &Client, arr: &[String; 5],
             }
         }
     }
-    false
+    println!("");
+    find_input
 }
 
-async fn connect(_path: &String, _max_depth: i32) {
-    let arr: [String; 5] = [
-        ".jpg".to_string(), ".jpeg".to_string(),
-        ".png".to_string(), ".gif".to_string(),
-        ".bmp".to_string()
-    ];
-    /*if !_path.starts_with("https://") {
-        _path.insert_str(0, "https://");
-    }*/
-    let client: &Result<Client, Error> = &connect_client(&_path).await;
+async fn connect_client(_path: &String) -> Result<Client, Error> {
+    let client: Result<Client, Error> = reqwest::Client::builder().build();
 
+    return client
+}
+
+async fn connect(_url: &String, _max_depth: i32) {
+    let mut hmap_url: HashMap<String, bool> = HashMap::new();
+    let client: &Result<Client, Error> = &connect_client(&_url).await;
+
+    hmap_url.insert(_url.clone(), false);
     match client {
         Ok(c) => {
-            let mut v1: Vec<String> = Vec::new();
-            let mut v2: Vec<String> = Vec::new();
+            let mut _find_input: bool = false;
 
-            v1.reserve(1024);
-            v1.reserve(1024);
-            v1.push(_path.to_owned());
-            //loop max_depth
-            for i in 0.._max_depth {
-                //choose vector to loop through, and vector to fill
-                if v1.len() == 0 {
-                    //v2, v1 gogo
-                    url_helper(&c, &arr, &v2, &mut v1).await;
-                } else {
-                    //v1, v2 gogo
-                    url_helper(&c, &arr, &v1, &mut v2).await;
+            for _i in 0.._max_depth {
+                _find_input = url_helper(_url, &c, &mut hmap_url).await;
+                if !_find_input {
+                    break ;
                 }
             }
-            dbg!(v2);
-            println!("{_max_depth}");
-            //println!("{i}");
         },
         Err(e) => {
             eprintln!("Creation client Error: {e}");
@@ -341,7 +397,7 @@ async fn main() {
     }
     println!("_r: {is_recursive} max_depth {max_depth} path {path}");
     if url != "" {
-        println!("url: {}", url);
+        //println!("url: {}", url);
         let max_depth: Result<i32, _> = max_depth.parse();
         match max_depth {
             Ok(max) => {
