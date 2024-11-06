@@ -1,4 +1,5 @@
 pub mod utils_metadata;
+pub mod utils_exif;
 
 pub mod handle_file {
     use std::fs::File;
@@ -10,7 +11,10 @@ pub mod handle_file {
     }
 
     pub fn get_exif(file: &File) -> Result<exif::Exif, exif::Error> {
-        let exif: Result<exif::Exif, exif::Error> = exif::Reader::new().read_from_container(&mut std::io::BufReader::new(file));
+        let bytes: &mut std::io::BufReader<&File>
+                                                = &mut std::io::BufReader::new(file);
+        let exif: Result<exif::Exif, exif::Error>
+                                                = exif::Reader::new().read_from_container(bytes);
     
         exif
     }

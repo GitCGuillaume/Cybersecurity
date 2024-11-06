@@ -1,4 +1,3 @@
-use std::any::Any;
 use std::fs::Metadata;
 use std::time::{
     SystemTime,
@@ -12,11 +11,15 @@ use chrono::{
     Utc
 };
 
+#[cfg(target_family = "unix")]
+use std::os::unix::fs::PermissionsExt;
+
+/*
 fn show_content_type(metadata: &Metadata) {
     let content = metadata.file_type();
 
     dbg!(content);
-}
+}*/
 
 fn show_len(metadata: &Metadata) {
     let value: u64 = metadata.len();
@@ -24,13 +27,20 @@ fn show_len(metadata: &Metadata) {
     println!("File length: {value} bytes");
 }
 
-fn show_permissions(metadata: &Metadata) {
-    let value = metadata.permissions();
+#[cfg(target_family = "unix")]
+fn show_permissions_unix(metadata: &Metadata) {
+    let value: std::fs::Permissions = metadata.permissions();
+    let mode = value.mode();
+
+    println!("Permission: {:o}", mode);
+}
+
+#[cfg(target_family = "windows")]
+fn show_permissions_windows(metadata: &Metadata) {
+    let value: std::fs::Permissions = metadata.permissions();
 
     if value.readonly() {
         println!("File is read only.");
-    } else {
-        println!("Read and write access.");
     }
 }
 
@@ -74,9 +84,12 @@ fn show_timer(timer: Result<SystemTime, std::io::Error>, _str: &str) {
 pub fn show_metadata(metadata: &Result<Metadata, std::io::Error>) {
     match metadata {
         Ok(res) => {
-            show_content_type(res);
+            //show_content_type(res);
             show_len(res);
-            show_permissions(res);
+            #[cfg(target_family = "unix")]
+            show_permissions_unix(res);
+            #[cfg(target_family = "windows")]
+            show_permissions_windows(res);
             show_timer(res.modified(), "Last time modified: ");
             show_timer(res.accessed(), "Last time accessed: ");
             show_timer(res.created(), "Time creation: ");
