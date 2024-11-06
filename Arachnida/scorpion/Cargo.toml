@@ -1,0 +1,8 @@
+[package]
+name = "scorpion"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+kamadak-exif = "0.6.0"
+chrono = "0.4.38"
