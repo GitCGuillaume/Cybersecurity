@@ -1,8 +1,12 @@
 use std::{ env, fs::File };
-use file::handle_file::{ get_file, get_exif };
-
+use file::{handle_file::{
+    get_file,
+    get_exif,
+    get_metadata,
+},
+    utils_metadata
+};
 mod file;
-mod metadata;
 
 /*
     Display jpg / png exif
@@ -12,22 +16,16 @@ fn main() {
     let argv: std::iter::Skip<env::Args> = env::args().skip(2);
 
     for i in argv {
-        let res_bytes = get_file(&i);
+        let res_file: Result<File, std::io::Error> = get_file(&i);
 
-        match res_bytes {
-            Ok(bytes) => {
-                let res_exif = get_exif(&bytes);
-
-                match res_exif {
-                    Ok(ex) => {
-                        for i in ex.fields() {
-                            dbg!(i);
-                        }
-                    },
-                    Err(e) => {
-                        eprintln!("Error: {e}");
-                    },
-                }
+        match res_file {
+            Ok(file) => {
+                let res_metadata: Result<std::fs::Metadata, std::io::Error> = get_metadata(&file);
+                dbg!(res_metadata);
+                //utils_metadata::show_metadata(&res_metadata);
+                //should I check content-type's file
+                //let res_exif: Result<exif::Exif, exif::Error> = get_exif(&file);
+                //utils_metadata::show_exif(&res_exif);
             },
             Err(e) => {
                 eprintln!("Error: {e}");

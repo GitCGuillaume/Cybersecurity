@@ -1,16 +1,14 @@
+pub mod utils_metadata;
+
 pub mod handle_file {
     use std::fs::File;
 
-    /*pub fn get_exif(bytes: &Vec<u8>) -> Result<exif::Exif, exif::Error> {
-        let exif_raw: Result<exif::Exif, exif::Error> = exif::Reader::new().read_raw(bytes.to_vec());
+    pub fn get_metadata(file: &File) -> Result<std::fs::Metadata, std::io::Error> {
+        let meta: Result<std::fs::Metadata, std::io::Error> = file.metadata();
 
-        exif_raw
+        meta
     }
-    pub fn get_file(path: &String) -> Result<Vec<u8>, std::io::Error> {
-        let exif: Result<Vec<u8>, std::io::Error> = fs::read(path);
 
-        exif
-    }*/
     pub fn get_exif(file: &File) -> Result<exif::Exif, exif::Error> {
         let exif: Result<exif::Exif, exif::Error> = exif::Reader::new().read_from_container(&mut std::io::BufReader::new(file));
     
