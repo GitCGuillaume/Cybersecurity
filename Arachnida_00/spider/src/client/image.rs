@@ -148,11 +148,19 @@ pub mod img {
             if !f.starts_with("http") {
                 match &regex {
                     Ok(reg) => {
-                        let aa = reg.captures(&options.url).unwrap().get(0).unwrap().as_str();
-                        let bb = String::from(aa) + f;
+                        let captures = reg.captures(&options.url).unwrap().get(0).unwrap().as_str();
+                        let new_url: String;
 
-                        crawl::try_insert_hmap(hmap_url, &bb, true);
-                        let _ = send_url_file(cli, options, &bb).await;
+                        if !f.starts_with("/") {
+                            new_url = String::from(captures) + "/" + f;
+                            println!("{new_url}");
+                        } else {
+                            new_url = String::from(captures) + f;
+                            println!("{new_url}");
+                        }
+
+                        crawl::try_insert_hmap(hmap_url, &new_url, true);
+                        let _ = send_url_file(cli, options, &new_url).await;
                     },
                     Err(_) => {},
                 };

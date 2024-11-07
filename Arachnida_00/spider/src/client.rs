@@ -19,7 +19,7 @@ pub async fn connect(_url: &String, path: &String, _max_depth: i32) {
         folder: path.clone()
     };
 
-    hmap_url.insert(_url.clone(), false);
+    hmap_url.insert(options.url.clone(), false);
     match client {
         Ok(c) => {
             let mut _find_input: bool = false;

@@ -19,9 +19,17 @@ pub mod document {
             if !f.starts_with("http") {
                 match &regex {
                     Ok(reg) => {
-                        let captures = reg.captures(_url).unwrap().get(0).unwrap().as_str();
-                        let new_url = String::from(captures) + f;
-        
+                        let captures = reg.captures(_url)
+                                            .unwrap().get(0).unwrap().as_str();
+                        let new_url: String;
+
+                        if !f.starts_with("/") {
+                            new_url = String::from(captures) + "/" + f;
+                            println!("{new_url}");
+                        } else {
+                            new_url = String::from(captures) + f;
+                            println!("{new_url}");
+                        }
                         crawl::try_insert_hmap(hmap_url, &new_url, false);
                     },
                     Err(_) => {},
