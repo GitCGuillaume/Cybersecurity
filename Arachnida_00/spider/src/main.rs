@@ -46,7 +46,6 @@ fn main() {
     let mut url: String = String::from("");
     let mut is_recursive: bool = false;
     let mut concatenate_flag: String = String::from("");
-    
 
     for i in args {
         if i.starts_with("-r") {

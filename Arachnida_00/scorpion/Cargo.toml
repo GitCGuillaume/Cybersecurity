@@ -5,4 +5,5 @@ edition = "2021"
 
 [dependencies]
 kamadak-exif = "0.6.0"
+infer = "0.16.0"
 chrono = "0.4.38"

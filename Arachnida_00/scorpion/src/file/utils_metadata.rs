@@ -10,16 +10,8 @@ use chrono::{
     Local,
     Utc
 };
-
 #[cfg(target_family = "unix")]
 use std::os::unix::fs::PermissionsExt;
-
-/*
-fn show_content_type(metadata: &Metadata) {
-    let content = metadata.file_type();
-
-    dbg!(content);
-}*/
 
 fn show_len(metadata: &Metadata) {
     let value: u64 = metadata.len();
