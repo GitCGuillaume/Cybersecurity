@@ -5,8 +5,8 @@ use ring:: rsa::KeyPair;
 /*
  *   https://fr.wikipedia.org/wiki/Public_Key_Cryptographic_Standards
  */
-pub fn encrypt_pkcs_rsa(buf: &[u8]) -> Result<KeyPair, ring::error::KeyRejected>{
-    let res: Result<KeyPair, ring::error::KeyRejected> = KeyPair::from_der(buf);
+pub fn encrypt_pkcs_rsa(buf: &Vec<u8>) -> Result<KeyPair, ring::error::KeyRejected>{
+    let res: Result<KeyPair, ring::error::KeyRejected> = KeyPair::from_der(&buf);
 
     res
 }
@@ -39,27 +39,17 @@ pub fn open(g_flag: &String) -> Result<File, std::io::Error> {
 
 /* Hexa Regex checker */
 pub fn regex_key(value: &str) -> bool {
-    let regex: Result<Regex, regex::Error> = Regex::new("^[a-fA-F0-9].+");
-
+    let regex: Result<Regex, regex::Error> = Regex::new(r"^(?m)[a-fA-F0-9\s]+$").map(|f|f);
     let res: bool = match regex {
         Ok(reg) => {
-            let captures = reg.captures(value);
-            let res: bool = match captures {
-                Some(capture) => {
-                    let get_str = capture.get(0)
-                                    .expect("Error while capturing key format.").as_str();
-                    if get_str == "Error while capturing key format." {
-                        eprintln!("{get_str}");
-                        return false;
-                    }
-                    return true;
-                },
-                None => {
-                    eprintln!("Private key must be of hexadecimal format.");
-                    false
-                },
-            };
-            res
+            let captures = reg.split(value);
+
+            for i in captures {
+                if i.len() != 0 {
+                    return  false;
+                }
+            }
+            true
         },
         Err(e) => {
             eprintln!("Error: {e}");

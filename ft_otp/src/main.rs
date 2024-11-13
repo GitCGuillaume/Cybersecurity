@@ -15,7 +15,7 @@ mod parse;
 
 //TOTP(K,T)
 //Do something with T
-//call hmac-sha-1 type crypt with K
+//call hmac-sha-1 type crypt with K secret
 //must generate 6 digits code
 
 //extract argv part
@@ -31,31 +31,35 @@ mod parse;
 //open a file
 //stop if can't open file   
 //og key content must be full hexadecimal
-//public key to encrypt (key.hex in subject example)
-//private key to decrypt (ft_otp.key)
+//key.hex is private
+//ft_otp.key is secret (public)
+//public to encrypt
+//private to decrypt
 //og key file content should be of at least 64 characters
 //og key content must be stored in ft_otp.key
 //must encrypt the key
 
 fn store_key(g_flag: &String) -> bool {
     let file: Result<File, std::io::Error> = tools::open(g_flag);
-    let mut txt: String = Default::default();
+    let mut buf: Vec<u8> = Vec::new();
 
     match file {
         Ok(mut f) => {
-            let str_size: Result<usize, std::io::Error> = f.read_to_string(&mut txt);
-            let buf: &[u8] = txt.as_bytes();
+            let res_size: Result<usize, std::io::Error> = f.read_to_end(&mut buf);
 
-            match str_size {
+            match res_size {
                 Ok(size) => {
+                    let txt: String = String::from_utf8(buf.clone()).expect("Something went wrong with private Key.");
+
                     if txt.len() <= 64 {
                         eprintln!("Error: key must be at least 64 hexadecimal characters: {0}", size);
                         return false;
                     }
                     if !tools::regex_key(&txt) {
+                        eprintln!("Key is invalid hex format");
                         return false;
                     }
-                    let res_encrypt: Result<KeyPair, KeyRejected> = tools::encrypt_pkcs_rsa(buf);
+                    let res_encrypt: Result<KeyPair, KeyRejected> = tools::encrypt_pkcs_rsa(&buf);
 
                     match res_encrypt {
                         Ok(encrypt) => {dbg!(encrypt);},

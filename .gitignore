@@ -1,5 +1,7 @@
 */target
 */Cargo.lock
+*/*.key
+*/*.hex
 Arachnida_00/*/target/
 Arachnida_00/*/Cargo.lock
 Arachnida_00/*/*.jpg
