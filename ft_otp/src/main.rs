@@ -1,7 +1,10 @@
 use std::env;
 use std::fs::File;
 use std::io::Read;
-use ring::{rsa::KeyPair, error::KeyRejected};
+use openssl::{
+    pkey::{Private, PKey},
+    error::ErrorStack
+};
 
 mod tools;
 mod parse;
@@ -39,6 +42,8 @@ mod parse;
 //og key content must be stored in ft_otp.key
 //must encrypt the key
 
+//RUSTFLAGS=-Zsanitizer=leak RUSTFLAGS+=" -Zexport-executable-symbols" cargo +nightly run -Zbuild-std --target x86_64-unknown-linux-gnu
+
 fn store_key(g_flag: &String) -> bool {
     let file: Result<File, std::io::Error> = tools::open(g_flag);
     let mut buf: Vec<u8> = Vec::new();
@@ -59,12 +64,27 @@ fn store_key(g_flag: &String) -> bool {
                         eprintln!("Key is invalid hex format");
                         return false;
                     }
-                    let res_encrypt: Result<KeyPair, KeyRejected> = tools::encrypt_pkcs_rsa(&buf);
+                    let res_pkey: Result<PKey<Private>, ErrorStack> = tools::generate_rsa();
 
-                    match res_encrypt {
-                        Ok(encrypt) => {dbg!(encrypt);},
+                    match res_pkey {
+                        Ok(pkey) => {
+                            let res_buf: Result<Vec<u8>, ErrorStack> = tools::encrypt_data(&pkey, &buf);
+
+                            match res_buf {
+                                Ok(buf_enc) => {
+                                    tools::file_new_and_write(&buf_enc, "ft_otp.key");
+                                },
+                                Err(_) => {},
+                            }
+                        },
                         Err(e) => {eprintln!("Error: {e}")},
                     }
+                    //let res_encrypt: Result<KeyPair, KeyRejected> = tools::encrypt_pkcs_rsa(&buf);
+
+                    /*match res_encrypt {
+                        Ok(encrypt) => {dbg!(encrypt);},
+                        Err(e) => {eprintln!("Error: {e}")},
+                    }*/
                 },
                 Err(e) => {
                     eprintln!("Error: {e}");
