@@ -31,13 +31,18 @@ mod parse;
 
 //-g
 //get og key file
-//open a file
-//stop if can't open file   
+//create a file
+//stop if can't create file   
 //og key content must be full hexadecimal
-//key.hex is private
-//ft_otp.key is secret (public)
+//key.hex is uncrypted secret
+//ft_otp.key is encrypted secret
 //public to encrypt
 //private to decrypt
+//generate rsa to encrypt
+//use keyring to save rsa key
+//equivalent to:
+//gpg -e username file
+//gpg -d encrypted_file
 //og key file content should be of at least 64 characters
 //og key content must be stored in ft_otp.key
 //must encrypt the key
@@ -64,8 +69,9 @@ fn store_key(g_flag: &String) -> bool {
                         eprintln!("Key is invalid hex format");
                         return false;
                     }
+                    //search public rsa using real username or something because I won't generate one every time?
                     let res_pkey: Result<PKey<Private>, ErrorStack> = tools::generate_rsa();
-
+                    //stock keypair rsa if generate
                     match res_pkey {
                         Ok(pkey) => {
                             let res_buf: Result<Vec<u8>, ErrorStack> = tools::encrypt_data(&pkey, &buf);
@@ -74,7 +80,7 @@ fn store_key(g_flag: &String) -> bool {
                                 Ok(buf_enc) => {
                                     tools::file_new_and_write(&buf_enc, "ft_otp.key");
                                 },
-                                Err(_) => {},
+                                Err(e) => {eprintln!("Error: {e}")},
                             }
                         },
                         Err(e) => {eprintln!("Error: {e}")},

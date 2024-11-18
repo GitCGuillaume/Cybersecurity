@@ -6,6 +6,71 @@ use openssl::{
     pkey::{ PKey, Private },
     rsa::{ Padding, Rsa }
 };
+use keyring::{
+    default::{self, default_credential_builder}, set_default_credential_builder, CredentialBuilder, Entry
+};
+
+
+//ok so now ask to enter a secret if no keyring found
+//use this secret to generate something to encrypt?
+fn generate_pkey_pair(pkey: &Rsa<Private>) {
+    let res_public = pkey.public_key_to_der();
+    //testing panic on purpose
+    /*let def: Box<dyn keyring::credential::CredentialBuilderApi + Send + Sync> = default_credential_builder();
+    //let res_build: Result<Box<dyn keyring::credential::CredentialApi + Send + Sync>, keyring::Error>
+      //  = def.build(Some("aze"), "linux-native", "guillaume");
+    match res_build {
+        Ok(build) => {
+            set_default_credential_builder(build);
+        },
+        Err(_) => {},
+    }
+    def.*/
+    //let aze = CredentialBuilder::build(Some("aze"), "linux-native", "guillaume");
+    //set_default_credential_builder(def);
+    let username = whoami::username();
+    println!("u:{username}");
+    let entry = Entry::new("ft_otp", &username).unwrap();
+    let persistence = default::default_credential_builder().persistence();
+
+    if  matches!(persistence, keyring::credential::CredentialPersistence::UntilDelete) {
+        println!("The default credential builder persists credentials on disk!")
+    } else {
+        println!("The default credential builder doesn't persist credentials on disk!")
+    }
+    match res_public {
+        Ok(public) => {
+            /*let res = entry.set_password("aze");
+            match res {
+                Ok(r) => {},
+                Err(e) => {eprintln!("Error public: {e}")},
+            }*/
+            /*let res = entry.set_secret(&public);
+            match res {
+                Ok(r) => {},
+                Err(e) => {eprintln!("Error public: {e}")},
+            }*/
+            let aa = entry.get_secret().unwrap();
+            
+            //let aze = entry.get_password().unwrap();
+            println!("{:?}", aa);
+        },
+        Err(e) => {eprintln!("Error: {e}")},
+    }
+    /*let res_private = pkey.private_key_to_der();
+
+    match res_private {
+        Ok(private) => {
+            let res = entry.set_secret(&private);
+            match res {
+                Ok(r) => {},
+                Err(e) => {eprintln!("Error private: {e}")},
+            }
+        },
+        Err(e) => {eprintln!("Error: {e}")},
+    }*/
+   // dbg!(entry);
+}
 
 /* Encrypter need a (public) pkey  */
 pub fn generate_rsa() -> Result<PKey<Private>, ErrorStack> {
@@ -32,6 +97,12 @@ pub fn generate_rsa() -> Result<PKey<Private>, ErrorStack> {
  * Source: https://docs.rs/openssl/latest/openssl/rsa/struct.Padding.html#associatedconstant.PKCS1
  */
 pub fn encrypt_data(pkey: &PKey<Private>, buf: &Vec<u8>) -> Result<Vec<u8>, ErrorStack> {
+    let aze = pkey.rsa().unwrap();
+    generate_pkey_pair(&aze);
+    //let aa = aze.public_key_to_pem();
+    //dbg!(String::from_utf8(aa.unwrap()));
+    //let bb = aze.private_key_to_pem();
+    //dbg!(String::from_utf8(bb.unwrap()));
     let res = Encrypter::new(pkey);
 
     let res: Result<Vec<u8>, ErrorStack> = match res {
@@ -60,8 +131,13 @@ pub fn encrypt_data(pkey: &PKey<Private>, buf: &Vec<u8>) -> Result<Vec<u8>, Erro
 }
 
 //???
-fn add_keyring() {
+//gpg --list-public-keys
+//Display credential status reboot
+fn init_keyring() {
+}
 
+fn add_keyring() {
+    
 }
 
 //???
