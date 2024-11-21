@@ -1,11 +1,50 @@
-use openssl::aes::{self, unwrap_key};
+use openssl::{
+    aes::{
+        self, unwrap_key
+    },
+    hash::DigestBytes
+};
+use crate::tools;
+const UNCRYPTED_SIZE: usize = 248;
 
-//decrypt_aes
-pub fn decrypt_aes(secret: &[u8], b_out: &mut [u8; 248], b_in: &Vec<u8>) -> bool {
+fn decrypt_aes(secret: &[u8], b_out: &mut [u8; 248], b_in: &Vec<u8>) -> bool {
     println!("out: {0} in: {1}",b_out.len(), b_in.len());
-    let decrypter = aes::AesKey::new_decrypt(secret).unwrap();
+    let decrypter = aes::AesKey::new_decrypt(secret);
 
-    let res = unwrap_key(&decrypter, None, b_out, b_in).unwrap();
-    println!("usize: {res}");
+    if let Ok(res) = decrypter {
+        let res = unwrap_key(&res, None, b_out, b_in);
+
+        if let Err(_) = res {
+            eprintln!("Error: Couldn't unwrap file");
+            eprintln!("Do not modify the file!");
+            eprintln!("Please make a new encrypted file with \
+             ./ft_otp -g [Hexadecimal file]");
+            return false;
+        }
+    } else {
+        eprintln!("Error: Couldn't decrypt secret.");
+        return false;
+    }
     true
+}
+
+pub fn decrypt_bytes(digest: &DigestBytes, buf: &mut [u8; UNCRYPTED_SIZE], text_cipher: &Vec<u8>) -> bool {
+    let tmp = decrypt_aes(&digest, buf, text_cipher);
+
+    if !tmp {
+        return tmp;
+    }
+    println!("tmp: {tmp}");
+    if tmp {
+        //totp
+        let txt: String = String::from_utf8(buf.to_ascii_uppercase())
+                    .expect("Something went wrong with private Key.");
+        let txt = txt.trim_end_matches('\0');
+
+        if !tools::regex_key(&txt) {
+            eprintln!("Key is invalid hex format");
+            return false;
+        }
+    }
+    return true;
 }

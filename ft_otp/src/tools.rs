@@ -6,6 +6,24 @@ use std::{
 };
 use regex::Regex;
 
+pub fn ask_quesion(question: &str) -> bool {
+    let mut buf: String = Default::default();
+
+    println!("{}", question);
+    println!("Type Y if yes");
+    let res = stdin().read_line(&mut buf);
+
+    if let Ok(_) = res {
+        let _str = buf.trim_end();
+        let _str = _str.to_lowercase();
+
+        if _str.eq("y") {
+            return true;
+        }
+    }
+    return false;
+}
+
 pub fn get_input(input: &mut String ) -> Result<usize, std::io::Error> {
     println!("Please enter a secret:");
     let res_count: Result<usize, std::io::Error> = stdin().read_line(input);
@@ -42,9 +60,9 @@ pub fn open(g_flag: &String) -> Result<File, std::io::Error> {
 /* Hexa Regex checker */
 pub fn regex_key(value: &str) -> bool {
     println!("value:{value}");
-    for c in value.chars() {
+    /*for c in value.chars() {
         println!("{c:?}");
-    }
+    }*/
     let regex: Result<Regex, regex::Error> = Regex::new("^(?m)[a-fA-F0-9]+$").map(|f|f);
     let res: bool = match regex {
         Ok(reg) => {

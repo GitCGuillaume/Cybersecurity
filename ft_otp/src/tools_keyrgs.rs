@@ -25,33 +25,9 @@ fn get_secret_keyring(entry: &Entry) -> Result<Vec<u8>, keyring::Error> {
 */
 pub fn request_entry() -> Result<Entry, keyring::Error> {
     let username: String = whoami::username();
-    let entry: Result<Entry, keyring::Error> = Entry::new("ft_o", &username);
+    let entry: Result<Entry, keyring::Error> = Entry::new("ft_otp", &username);
 
     entry
-    /*let ret_secret: Result<Vec<u8>, keyring::Error> = get_secret_keyring(&entry);
-
-    match ret_secret {
-        Ok(secret_krng) => {
-            let res = cmp_keyring(secret, &secret_krng);
-
-            res
-        },
-        Err(_) => {
-            println!("Try register secret key");
-            let res = entry.set_secret(secret);
-            let res = match res {
-                Ok(_) => {
-                    println!("Secret registered successfully");
-                    true
-                },
-                Err(e) => {
-                    eprintln!("Error: {e}");
-                    false
-                },
-            };
-            res
-        }
-    }*/
 }
 
 //ask for keyring

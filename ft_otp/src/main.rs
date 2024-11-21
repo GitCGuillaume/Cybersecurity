@@ -39,8 +39,7 @@ const UNCRYPTED_SIZE: usize = 248;
 //decrypted key file content should be of at least 64 characters and max 256
 //then call TOTP(K, T)
 
-fn decrypt_file(k_flag: &String, digest: &DigestBytes) -> bool {
-    let mut tmp = false;
+fn read_crypt(k_flag: &String, digest: &DigestBytes) {
     let mut buf: [u8; UNCRYPTED_SIZE] = [0; UNCRYPTED_SIZE];
     let res_file: Result<File, std::io::Error> = tools::open(k_flag);
 
@@ -52,28 +51,28 @@ fn decrypt_file(k_flag: &String, digest: &DigestBytes) -> bool {
 
             match res_size {
                 Ok(size) => {
-                    //if not 256 stop here
+                    println!("usize:{}",size);
                     if size != ENCRYPTED_SIZE {
                         eprintln!("Encoded file should be of size {} bits", ENCRYPTED_SIZE);
-                        return false;
+                        return ();
                     }
-                    println!("usize:{}",size);
                     text_cipher.resize(ENCRYPTED_SIZE, 0);
-                    tmp = tools_decrypt::decrypt_aes(&digest, &mut buf, &text_cipher);
-                    let aze = String::from_utf8(buf.to_ascii_uppercase()).unwrap();
-                    println!("buf: {}", aze);
+                    let res: bool = tools_decrypt::decrypt_bytes(digest, &mut buf, &text_cipher);
+
+                    if res {
+                        //call totp
+                        println!("call totp");
+                    }
                 },
                 Err(e) => {eprintln!("Error: {e}")},
             }
         },
         Err(e) => {eprintln!("Error: {e}")},
     }
-    tmp
 }
 
 /* Get keyring part */
-fn keyring_comparison(k_flag: &String, input: &String) -> bool {
-    let mut tmp: bool = false;
+fn decrypt_comparaison(k_flag: &String, input: &String) {
     let ret_str: &str;
     let res_secret: Result<openssl::hash::DigestBytes, ErrorStack>;
     let res_keyring: Result<Vec<u8>, keyring::Error>;
@@ -90,13 +89,13 @@ fn keyring_comparison(k_flag: &String, input: &String) -> bool {
                     let res: bool = tools_keyrgs::cmp_keyring(&digest, &keyring);
 
                     if !res {
-                        return false;
+                        return ();
                     }
-                    tmp = decrypt_file(k_flag, &digest);
+                    read_crypt(k_flag, &digest);
                 },
                 Err(e) => {
                     eprintln!("Error: {e}");
-                    return false;
+                    return ();
                 },
             }
         },
@@ -105,10 +104,9 @@ fn keyring_comparison(k_flag: &String, input: &String) -> bool {
             eprintln!("Try to register a key first with ./ft_otp -g [Hexadecimal file].");
         },
     }
-    return tmp;
 }
 
-fn password_generation(k_flag: &String) {
+fn secret_cmp_decrypt(k_flag: &String) {
     //Enter a secret part
     let mut input: String = Default::default();
     let res_size = tools::get_input(&mut input);
@@ -119,12 +117,7 @@ fn password_generation(k_flag: &String) {
         eprintln!("Couldn't get input");
         return ();
     }
-    let is_decrypted = keyring_comparison(k_flag, &input);
-
-    if is_decrypted {
-        println!("gogo");
-        //totp(K = buf, T)
-    }
+    decrypt_comparaison(k_flag, &input);
 }
 
 //-g
@@ -143,10 +136,56 @@ fn password_generation(k_flag: &String) {
 //RUSTFLAGS=-Zsanitizer=leak RUSTFLAGS+=" -Zexport-executable-symbols" cargo +nightly run -Zbuild-std --target x86_64-unknown-linux-gnu
 //try buf max 248
 
+fn cmp_encrypt(res_digest: &Result<DigestBytes, ErrorStack>,
+                entry: &Entry, buf: &Vec<u8>, deleted: bool) {
+    match res_digest {
+        Ok(digest) => {
+            let res;
+            if deleted {
+                res = tools_keyrgs::register_keyring(&entry, &digest);
+            } else {
+                let res_keyring = tools_keyrgs::get_keyring(&entry);
+
+                match res_keyring {
+                    Ok(key) => {
+                        res = tools_keyrgs::cmp_keyring(&digest, &key);
+                    },
+                    Err(e) => {
+                        eprintln!("Error: {e}");
+                        return ();
+                    },
+                }
+            }
+            //futur fonction
+            if res {
+                let mut text_cipher: [u8; ENCRYPTED_SIZE] = [0; ENCRYPTED_SIZE];
+
+                tools_encrypt::encrypt_aes(&digest, &mut text_cipher, &buf);
+                tools::file_new_and_write(&text_cipher, FILENAME);
+            }
+        },
+        Err(e) => {eprintln!("Error: {e}")},
+    }
+}
+
+fn hash_input(entry: &Entry, buf: &Vec<u8>, deleted: bool) {
+    let mut input: String = Default::default();
+    let res_size = tools::get_input(&mut input);
+
+    if let Ok(size) = res_size {
+        println!("Input registered successfully: {}", size);
+    } else {
+        eprintln!("Couldn't get input");
+        return ();
+    }
+    let ret_str = input.trim_end();
+    let res_digest: Result<openssl::hash::DigestBytes, ErrorStack> = tools_encrypt::hash_secret(&ret_str);
+
+    cmp_encrypt(&res_digest, &entry, buf, deleted);
+}
+
 /* à nettoyer */
 fn encode_part(buf: &Vec<u8>) {
-    //ask for keyring
-    let mut input: String = Default::default();
     let res_entry: Result<Entry, keyring::Error> = tools_keyrgs::request_entry();
 
     match res_entry {
@@ -155,35 +194,17 @@ fn encode_part(buf: &Vec<u8>) {
 
             if let Err(e) = res {
                 println!("{e}");
-                let res_size = tools::get_input(&mut input);
-
-                if let Ok(size) = res_size {
-                    println!("Input registered successfully: {}", size);
-                } else {
-                    eprintln!("Couldn't get input");
-                    return ();
-                }
-                let ret_str = input.trim_end();
-                let res_digest: Result<openssl::hash::DigestBytes, ErrorStack> = tools_encrypt::hash_secret(&ret_str);
-
-                match res_digest {
-                    Ok(digest) => {
-                        let res = tools_keyrgs::register_keyring(&entry, &digest);
-
-                        //futur fonction
-                        if res {
-                            let mut text_cipher: [u8; ENCRYPTED_SIZE] = [0; ENCRYPTED_SIZE];
-
-                            tools_encrypt::encrypt_aes(&digest, &mut text_cipher, &buf);
-                            tools::file_new_and_write(&text_cipher, FILENAME);
-                        }
-                    },
-                    Err(e) => {eprintln!("Error: {e}")},
-                }
+                hash_input(&entry, buf, true);
             } else {
-                //ask if want to delete secret
-                //si oui delete > delete secret, en fait un nouveau
-                //call fonction encrypt
+                let ask: bool
+                        = tools::ask_quesion("Do you want to delete existing secret?");
+                if ask {
+                    let _ = entry.delete_credential();
+                    println!("Deleted successfully");
+                    hash_input(&entry, buf, true);
+                } else {
+                    hash_input(&entry, buf, false);
+                }
             }
         },
         Err(e) => {
@@ -197,7 +218,6 @@ fn store_key(g_flag: &String) -> bool {
     let mut buf: Vec<u8> = Vec::new();
 
     buf.reserve(UNCRYPTED_SIZE);
-println!("le:{}", buf.len());
     match file {
         Ok(mut f) => {
             let res_size: Result<usize, std::io::Error> = f.read_to_end(&mut buf);
@@ -210,9 +230,10 @@ println!("le:{}", buf.len());
                         return false;
                     }
                     buf.resize(UNCRYPTED_SIZE, 0);
-                    let txt: String = String::from_utf8(buf.clone()).expect("Something went wrong with private Key.");
-println!("l:{}", txt.len());
+                    let txt: String = String::from_utf8(buf.clone())
+                                    .expect("Something went wrong with private Key.");
                     let txt = txt.trim_end_matches('\0');
+
                     if !tools::regex_key(&txt) {
                         eprintln!("Key is invalid hex format");
                         return false;
@@ -252,6 +273,6 @@ fn main() {
     }
     //check k_flag len if > 0 call ft
     if 0 < k_flag.len() {
-        password_generation(&k_flag);
+        secret_cmp_decrypt(&k_flag);
     }
 }
