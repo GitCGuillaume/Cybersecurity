@@ -5,9 +5,9 @@ use openssl::{
     hash::DigestBytes
 };
 use crate::tools;
-const UNCRYPTED_SIZE: usize = 248;
+use crate::define;
 
-fn decrypt_aes(secret: &[u8], b_out: &mut [u8; 248], b_in: &Vec<u8>) -> bool {
+fn decrypt_aes(secret: &[u8], b_out: &mut [u8; define::UNCRYPTED_SIZE], b_in: &Vec<u8>) -> bool {
     println!("out: {0} in: {1}",b_out.len(), b_in.len());
     let decrypter = aes::AesKey::new_decrypt(secret);
 
@@ -28,7 +28,7 @@ fn decrypt_aes(secret: &[u8], b_out: &mut [u8; 248], b_in: &Vec<u8>) -> bool {
     true
 }
 
-pub fn decrypt_bytes(digest: &DigestBytes, buf: &mut [u8; UNCRYPTED_SIZE], text_cipher: &Vec<u8>) -> bool {
+pub fn decrypt_bytes(digest: &DigestBytes, buf: &mut [u8; define::UNCRYPTED_SIZE], text_cipher: &Vec<u8>) -> bool {
     let tmp = decrypt_aes(&digest, buf, text_cipher);
 
     if !tmp {

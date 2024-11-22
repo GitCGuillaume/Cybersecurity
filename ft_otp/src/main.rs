@@ -5,15 +5,13 @@ use keyring::Entry;
 use openssl::error::ErrorStack;
 use openssl::hash::DigestBytes;
 
+mod define;
 mod tools;
 mod tools_encrypt;
 mod tools_decrypt;
 mod tools_keyrgs;
 mod parse;
-
-const FILENAME: &str = "ft_otp.key";
-const ENCRYPTED_SIZE: usize = 256;
-const UNCRYPTED_SIZE: usize = 248;
+mod totp;
 
 //https://datatracker.ietf.org/doc/html/rfc8017 encrypt public key
 //https://datatracker.ietf.org/doc/html/rfc6238#page-2
@@ -40,28 +38,29 @@ const UNCRYPTED_SIZE: usize = 248;
 //then call TOTP(K, T)
 
 fn read_crypt(k_flag: &String, digest: &DigestBytes) {
-    let mut buf: [u8; UNCRYPTED_SIZE] = [0; UNCRYPTED_SIZE];
+    let mut buf: [u8; define::UNCRYPTED_SIZE] = [0; define::UNCRYPTED_SIZE];
     let res_file: Result<File, std::io::Error> = tools::open(k_flag);
 
     match res_file {
         Ok(mut file) => {
             let mut text_cipher: Vec<u8> = Vec::new();
-            text_cipher.reserve(ENCRYPTED_SIZE);
+            text_cipher.reserve(define::ENCRYPTED_SIZE);
             let res_size: Result<usize, std::io::Error> = file.read_to_end(&mut text_cipher);
 
             match res_size {
                 Ok(size) => {
                     println!("usize:{}",size);
-                    if size != ENCRYPTED_SIZE {
-                        eprintln!("Encoded file should be of size {} bits", ENCRYPTED_SIZE);
+                    if size != define::ENCRYPTED_SIZE {
+                        eprintln!("Encoded file should be of size {} bits", define::ENCRYPTED_SIZE);
                         return ();
                     }
-                    text_cipher.resize(ENCRYPTED_SIZE, 0);
+                    text_cipher.resize(define::ENCRYPTED_SIZE, 0);
                     let res: bool = tools_decrypt::decrypt_bytes(digest, &mut buf, &text_cipher);
 
                     if res {
                         //call totp
                         println!("call totp");
+                        totp::start_totp(&buf);
                     }
                 },
                 Err(e) => {eprintln!("Error: {e}")},
@@ -158,10 +157,10 @@ fn cmp_encrypt(res_digest: &Result<DigestBytes, ErrorStack>,
             }
             //futur fonction
             if res {
-                let mut text_cipher: [u8; ENCRYPTED_SIZE] = [0; ENCRYPTED_SIZE];
+                let mut text_cipher: [u8; define::ENCRYPTED_SIZE] = [0; define::ENCRYPTED_SIZE];
 
                 tools_encrypt::encrypt_aes(&digest, &mut text_cipher, &buf);
-                tools::file_new_and_write(&text_cipher, FILENAME);
+                tools::file_new_and_write(&text_cipher, define::FILENAME);
             }
         },
         Err(e) => {eprintln!("Error: {e}")},
@@ -217,7 +216,7 @@ fn store_key(g_flag: &String) -> bool {
     let file: Result<File, std::io::Error> = tools::open(g_flag);
     let mut buf: Vec<u8> = Vec::new();
 
-    buf.reserve(UNCRYPTED_SIZE);
+    buf.reserve(define::UNCRYPTED_SIZE);
     match file {
         Ok(mut f) => {
             let res_size: Result<usize, std::io::Error> = f.read_to_end(&mut buf);
@@ -225,11 +224,11 @@ fn store_key(g_flag: &String) -> bool {
             match res_size {
                 Ok(size) => {
                     println!("SI:{}", size);
-                    if size < 64 || size > UNCRYPTED_SIZE {
-                        eprintln!("Error: key must be between 64 and {0} hexadecimal characters: {1}", UNCRYPTED_SIZE, size);
+                    if size < 64 || size > define::UNCRYPTED_SIZE {
+                        eprintln!("Error: key must be between 64 and {0} hexadecimal characters: {1}", define::UNCRYPTED_SIZE, size);
                         return false;
                     }
-                    buf.resize(UNCRYPTED_SIZE, 0);
+                    buf.resize(define::UNCRYPTED_SIZE, 0);
                     let txt: String = String::from_utf8(buf.clone())
                                     .expect("Something went wrong with private Key.");
                     let txt = txt.trim_end_matches('\0');

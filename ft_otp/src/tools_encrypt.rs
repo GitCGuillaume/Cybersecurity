@@ -3,11 +3,12 @@ use openssl::{
     error::ErrorStack,
     hash,
 };
+use crate::define;
 
 /*
  * Encrypt Hexa key
  */
-pub fn encrypt_aes(secret: &[u8], b_out: &mut [u8; 256], b_in: &Vec<u8>) {
+pub fn encrypt_aes(secret: &[u8], b_out: &mut [u8; define::ENCRYPTED_SIZE], b_in: &Vec<u8>) {
     let res_encrypter = aes::AesKey::new_encrypt(secret);
 
     if let Ok(encrypter) = res_encrypter {
