@@ -16,6 +16,7 @@
 // R5 - There MUST be user-friendly mechanisms available to
 //resynchronize the counter.  Section 7.4 and Appendix E.4 details the
 //resynchronization mechanism proposed in this document
+//T transform into hexadecimal
 
 //How K part in TOTP work
 // K:
@@ -47,10 +48,30 @@
 
 //ft totp
 use std::time::SystemTime;
+use openssl::{error::ErrorStack, hash::MessageDigest, pkey::{
+  PKey,
+  Private,
+}, sign::Signer
+};
 use crate::define;
 
+fn generate_signer(key: &PKey<Private>, digest_type: MessageDigest) -> Result<Signer<'_>, ErrorStack> {
+  let signer: Result<Signer<'_>, ErrorStack> = Signer::new(digest_type, key);
+
+  signer
+}
+
+/* rfc [as a string?] */
+fn generate_hmac(secret: &[u8]) -> Result<PKey<Private>, ErrorStack> {
+  let key: Result<PKey<Private>, ErrorStack> = PKey::hmac(b"a");
+
+  key
+}
+
 fn totp(k: &[u8; define::UNCRYPTED_SIZE], T: u64) {
-  
+  //get hexa T
+  let bytes: [u8; 8] = T.to_be_bytes();
+
 }
 
 /*
@@ -63,8 +84,35 @@ fn math_time() -> u64 {
   return time.as_secs() / 30;
 }
 
-pub fn start_totp(buf: &[u8; define::UNCRYPTED_SIZE]) {
+pub fn start_totp(secret: &[u8], buf: &[u8; define::UNCRYPTED_SIZE]) {
+  let big_endian_buf: [u8; define::UNCRYPTED_SIZE] = buf.map(|f|f.to_be());
+
+  if big_endian_buf.len() != define::UNCRYPTED_SIZE {
+    //stop here
+    eprintln!("Convert endianess should be of size {0}.", define::UNCRYPTED_SIZE);
+    return ();
+  }
+  let res_key = generate_hmac(secret);
   let t = math_time();
+
+  match res_key {
+      Ok(key) => {
+        let res_signer = generate_signer(&key, MessageDigest::sha1());
+
+        if let Ok(mut sign) = res_signer {
+          let upd = sign.update(&t.to_be_bytes()).unwrap();
+          let upd = sign.update(&big_endian_buf).unwrap();
+          let test = sign.sign_to_vec().unwrap();
+          println!("size:{}", test.len());
+          //err if len not 20
+        } else {
+          println!("Couldn't sign value.");
+        }
+      },
+      Err(e) => eprintln!("Error: {e}"),
+  }
+  
+
 
   totp(buf, t);
 }
