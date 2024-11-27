@@ -60,7 +60,7 @@ fn read_crypt(k_flag: &String, digest: &DigestBytes) {
                     if res {
                         //call totp
                         println!("call totp");
-                        totp::start_totp(digest, &buf);
+                        totp::start_totp(/*digest, */&buf);
                     }
                 },
                 Err(e) => {eprintln!("Error: {e}")},

@@ -51,9 +51,13 @@ use std::time::SystemTime;
 use openssl::{error::ErrorStack, hash::MessageDigest, pkey::{
   PKey,
   Private,
-}, sign::Signer
+}, sha, sign::Signer
 };
 use crate::define;
+/* 
+fn dynamic_truncation(hmac: &Vec<u8>) {
+  let mut dt: [u8; 4] = [0u8; 4];
+}
 
 fn generate_signer(key: &PKey<Private>, digest_type: MessageDigest) -> Result<Signer<'_>, ErrorStack> {
   let signer: Result<Signer<'_>, ErrorStack> = Signer::new(digest_type, key);
@@ -62,8 +66,8 @@ fn generate_signer(key: &PKey<Private>, digest_type: MessageDigest) -> Result<Si
 }
 
 /* rfc [as a string?] */
-fn generate_hmac(secret: &[u8]) -> Result<PKey<Private>, ErrorStack> {
-  let key: Result<PKey<Private>, ErrorStack> = PKey::hmac(b"a");
+fn generate_hmac(digest: &[u8; define::UNCRYPTED_SIZE]) -> Result<PKey<Private>, ErrorStack> {
+  let key: Result<PKey<Private>, ErrorStack> = PKey::hmac(digest);
 
   key
 }
@@ -72,7 +76,7 @@ fn totp(k: &[u8; define::UNCRYPTED_SIZE], T: u64) {
   //get hexa T
   let bytes: [u8; 8] = T.to_be_bytes();
 
-}
+}*/
 
 /*
  * Apply T math from RFC 6238
@@ -84,7 +88,7 @@ fn math_time() -> u64 {
   return time.as_secs() / 30;
 }
 
-pub fn start_totp(secret: &[u8], buf: &[u8; define::UNCRYPTED_SIZE]) {
+pub fn start_totp(/*digest: &[u8], */buf: &[u8; define::UNCRYPTED_SIZE]) {
   let big_endian_buf: [u8; define::UNCRYPTED_SIZE] = buf.map(|f|f.to_be());
 
   if big_endian_buf.len() != define::UNCRYPTED_SIZE {
@@ -92,27 +96,44 @@ pub fn start_totp(secret: &[u8], buf: &[u8; define::UNCRYPTED_SIZE]) {
     eprintln!("Convert endianess should be of size {0}.", define::UNCRYPTED_SIZE);
     return ();
   }
-  let res_key = generate_hmac(secret);
   let t = math_time();
+  let mut hasher = sha::Sha1::new();
+  hasher.update(&big_endian_buf);
+  hasher.update(&t.to_be_bytes());
+  let hmac: [u8; 20] = hasher.finish();
+  if hmac.len() != 20 {
+    eprintln!("HMAC-SHA-1 should be of size 20, currently: {0}", hmac.len());
+    return ();
+  }
+  //let aze = String::from_utf8_lossy(&hmac);
+  let offset: usize =  (hmac[19] & 0x0f) as usize;
+  //let dix: u32 = 10;
+  //binary = binary % dix.pow(6);
+  //println!("b:{binary}");
+  /*let res_key = generate_hmac(&big_endian_buf);
 
   match res_key {
       Ok(key) => {
-        let res_signer = generate_signer(&key, MessageDigest::sha1());
+        
+        /*let res_signer = generate_signer(&key, MessageDigest::sha1());
 
         if let Ok(mut sign) = res_signer {
           let upd = sign.update(&t.to_be_bytes()).unwrap();
-          let upd = sign.update(&big_endian_buf).unwrap();
-          let test = sign.sign_to_vec().unwrap();
-          println!("size:{}", test.len());
+          //let upd = sign.update(&big_endian_buf).unwrap();
+          let hmac = sign.sign_to_vec().unwrap();
+          println!("size:{}", hmac.len());
           //err if len not 20
+          if hmac.len() != 20 {
+            eprintln!("HMAC-SHA-1 should be of size 20, currently: {0}", hmac.len());
+          }
         } else {
           println!("Couldn't sign value.");
-        }
+        }*/
       },
       Err(e) => eprintln!("Error: {e}"),
-  }
+  }*/
   
 
 
-  totp(buf, t);
+ // totp(buf, t);
 }
