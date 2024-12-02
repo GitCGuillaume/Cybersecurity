@@ -47,14 +47,14 @@
 //generate one time a T to try
 
 //ft totp
-use std::time::SystemTime;
+use std::{array, io::Read, ops::Shl, time::SystemTime};
 use openssl::{error::ErrorStack, hash::MessageDigest, pkey::{
   PKey,
   Private,
 }, sha, sign::Signer
 };
 use crate::define;
-/* 
+
 fn dynamic_truncation(hmac: &Vec<u8>) {
   let mut dt: [u8; 4] = [0u8; 4];
 }
@@ -66,7 +66,7 @@ fn generate_signer(key: &PKey<Private>, digest_type: MessageDigest) -> Result<Si
 }
 
 /* rfc [as a string?] */
-fn generate_hmac(digest: &[u8; define::UNCRYPTED_SIZE]) -> Result<PKey<Private>, ErrorStack> {
+fn generate_hmac(digest: &[u8]) -> Result<PKey<Private>, ErrorStack> {
   let key: Result<PKey<Private>, ErrorStack> = PKey::hmac(digest);
 
   key
@@ -76,7 +76,7 @@ fn totp(k: &[u8; define::UNCRYPTED_SIZE], T: u64) {
   //get hexa T
   let bytes: [u8; 8] = T.to_be_bytes();
 
-}*/
+}
 
 /*
  * Apply T math from RFC 6238
@@ -88,34 +88,61 @@ fn math_time() -> u64 {
   return time.as_secs() / 30;
 }
 
+//Ce qui ne fonctionne pas?
+//le buf reçus?
+//Le T?
+//L'endianess?
+//L'opération bitwise?
 pub fn start_totp(/*digest: &[u8], */buf: &[u8; define::UNCRYPTED_SIZE]) {
-  let big_endian_buf: [u8; define::UNCRYPTED_SIZE] = buf.map(|f|f.to_be());
-
+  /*println!("BUF:{}", String::from_utf8_lossy(buf));
+  let big_endian_buf: [u8; define::UNCRYPTED_SIZE] = buf.clone().map(|f|f.to_be());
+  println!("BUF:{}", String::from_utf8_lossy(&big_endian_buf));
   if big_endian_buf.len() != define::UNCRYPTED_SIZE {
     //stop here
     eprintln!("Convert endianess should be of size {0}.", define::UNCRYPTED_SIZE);
     return ();
-  }
+  }*/
+  let mut buff = Vec::new();
+  buff.resize(define::UNCRYPTED_SIZE, 0);
+  buff.copy_from_slice(buf);
+  buff.truncate(64);
+  buff.reserve(64);
+  let buf = buff.clone();
+  println!("LENNNNN:{}", buf.len());
   let t = math_time();
   let mut hasher = sha::Sha1::new();
-  hasher.update(&big_endian_buf);
+  hasher.update(&buf.clone());
   hasher.update(&t.to_be_bytes());
   let hmac: [u8; 20] = hasher.finish();
+
   if hmac.len() != 20 {
     eprintln!("HMAC-SHA-1 should be of size 20, currently: {0}", hmac.len());
     return ();
   }
-  //let aze = String::from_utf8_lossy(&hmac);
-  let offset: usize =  (hmac[19] & 0x0f) as usize;
-  //let dix: u32 = 10;
-  //binary = binary % dix.pow(6);
-  //println!("b:{binary}");
-  /*let res_key = generate_hmac(&big_endian_buf);
+  let offset =  (hmac[19] & 0x0f) as usize;
+  /* prend lowerbit */
+  println!("ofs:{offset}");
+  let mut val: u32;
+
+  println!("{0:b} {1:b} {2:b} {3:b}", hmac[offset], hmac[offset+1], hmac[offset+2], hmac[offset+3]);
+  //println!("{0:b} {1:b} {2:b} {3:b}", test[0] as u32, test[1] as u32, test[2] as u32, test[3] as u32);
+  val = ((hmac[offset] & 0x7f) as u32).overflowing_shl(24).0
+    | ((hmac[offset+1] & 0xff) as u32).overflowing_shl(16).0
+    | ((hmac[offset+2] & 0xff) as u32).overflowing_shl(8).0
+    | (hmac[offset+3] & 0xff) as u32;
+  println!("val:{0} {1:b}", val, val);
+  // println!("val:{:b} {}", val, val);
+  let binary:u32 = val % 1000000;
+  println!("{0} {1:b}", binary, binary);
+  let binary:u32 = val % 1000000;
+  println!("{0} {1:b}", binary, binary);
+
+  let res_key = generate_hmac(&buf.clone());
 
   match res_key {
       Ok(key) => {
         
-        /*let res_signer = generate_signer(&key, MessageDigest::sha1());
+        let res_signer = generate_signer(&key, MessageDigest::sha1());
 
         if let Ok(mut sign) = res_signer {
           let upd = sign.update(&t.to_be_bytes()).unwrap();
@@ -126,12 +153,79 @@ pub fn start_totp(/*digest: &[u8], */buf: &[u8; define::UNCRYPTED_SIZE]) {
           if hmac.len() != 20 {
             eprintln!("HMAC-SHA-1 should be of size 20, currently: {0}", hmac.len());
           }
+          /*val = ((hmac[offset].to_be() & 0x7f) as u32).overflowing_shl(24).0
+            | ((hmac[offset+1].to_be() & 0xff) as u32).overflowing_shl(16).0
+            | ((hmac[offset+2].to_be() & 0xff) as u32).overflowing_shl(8).0
+            | (hmac[offset+3].to_be() & 0xff) as u32;
+          */
+          let offset =  (hmac[19] & 0x0f) as usize;
+          let mut test: [u8; 4] = [0u8; 4];
+          test[0] = hmac[offset];
+          test[1] = hmac[offset+1];
+          test[2] = hmac[offset+2];
+          test[3] = hmac[offset+3];
+          println!("{0:b} {1:b} {2:b} {3:b}", test[0], test[1], test[2], test[3]);
+          println!("{0:b} {1:b} {2:b} {3:b}", test[0].to_be(), test[1].to_be(), test[2].to_be(), test[3].to_be());
+          val = u32::from_be_bytes(test) & 0x7FFFFFFF;
+          println!("val:{0} {1:b}", val, val);
+          let binary:u32 = val % 1000000;
+          println!("{0} {1:b}", binary, binary);
+          val = u32::from_be_bytes(test) & 0xFFFFFFFE;
+          println!("val:{0} {1:b}", val, val);
+          let binary:u32 = val % 1000000;
+          println!("{0} {1:b}", binary, binary);
+
+          val = u32::from_be_bytes(hmac[offset..offset+4].try_into().unwrap()) & 0x7FFFFFFF;
+          println!("val:{0} {1:b}", val, val);
+          let binary:u32 = val % 1000000;
+          println!("try {0}", binary);
+          val = u32::from_be_bytes(hmac[offset..offset+4].try_into().unwrap()) & 0xFFFFFFFE;
+          println!("val:{0} {1:b}", val, val);
+          let binary:u32 = val % 1000000;
+          println!("try {0}", binary);
+
+
+
+          
+          let mut hasher = sha::Sha1::new();
+          hasher.update(&buf.clone());
+          hasher.update(&t.to_be_bytes());
+          let hmac: [u8; 20] = hasher.finish();
+          if hmac.len() != 20 {
+            eprintln!("HMAC-SHA-1 should be of size 20, currently: {0}", hmac.len());
+            return ();
+          }
+          let offset =  (hmac[19] & 0x0f) as usize;
+          let mut test: [u8; 4] = [0u8; 4];
+          test[0] = hmac[offset];
+          test[1] = hmac[offset+1];
+          test[2] = hmac[offset+2];
+          test[3] = hmac[offset+3];
+          println!("{0:b} {1:b} {2:b} {3:b}", test[0], test[1], test[2], test[3]);
+          println!("{0:b} {1:b} {2:b} {3:b}", test[0].to_be(), test[1].to_be(), test[2].to_be(), test[3].to_be());
+          val = u32::from_be_bytes(test) & & 0x7FFFFFFF;
+          println!("val:{0} {1:b}", val, val);
+          let binary:u32 = val % 1000000;
+          println!("{0} {1:b}", binary, binary);
+          val = u32::from_be_bytes(test) & & 0xFFFFFFFE;
+          println!("val:{0} {1:b}", val, val);
+          let binary:u32 = val % 1000000;
+          println!("{0} {1:b}", binary, binary);
+
+          val = u32::from_be_bytes(hmac[offset..offset+4].try_into().unwrap()) & 0x7FFFFFFF;
+          println!("val:{0} {1:b}", val, val);
+          let binary:u32 = val % 1000000;
+          println!("try {0}", binary);
+          val = u32::from_be_bytes(hmac[offset..offset+4].try_into().unwrap()) & 0xFFFFFFFE;
+          println!("val:{0} {1:b}", val, val);
+          let binary:u32 = val % 1000000;
+          println!("try {0}", binary);
         } else {
           println!("Couldn't sign value.");
-        }*/
+        }
       },
       Err(e) => eprintln!("Error: {e}"),
-  }*/
+  }
   
 
 

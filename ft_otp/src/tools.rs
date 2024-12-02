@@ -34,7 +34,7 @@ pub fn get_input(input: &mut String ) -> Result<usize, std::io::Error> {
 
 /* Try to create file then write in */
 pub fn file_new_and_write(content: &[u8; define::ENCRYPTED_SIZE], name: &str) {
-    let res_file: Result<File, std::io::Error> = File::create_new(name);
+    let res_file: Result<File, std::io::Error> = File::create(name);
 
     match res_file {
         Ok(mut file) => {
