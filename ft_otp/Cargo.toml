@@ -8,3 +8,4 @@ keyring = { version = "3.6.1", features = ["linux-native"]}
 openssl = "0.10.68"
 regex = "1.11.1"
 whoami = "1.5.2"
+hex = "0.4.3"

@@ -7,7 +7,7 @@ use std::{
 use regex::Regex;
 use crate::define;
 
-pub fn ask_quesion(question: &str) -> bool {
+pub fn ask_question(question: &str) -> bool {
     let mut buf: String = Default::default();
 
     println!("{}", question);

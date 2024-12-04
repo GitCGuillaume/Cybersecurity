@@ -28,23 +28,24 @@ fn decrypt_aes(secret: &[u8], b_out: &mut [u8; define::UNCRYPTED_SIZE], b_in: &V
     true
 }
 
-pub fn decrypt_bytes(digest: &DigestBytes, buf: &mut [u8; define::UNCRYPTED_SIZE], text_cipher: &Vec<u8>) -> bool {
+pub fn decrypt_bytes(digest: &DigestBytes, buf: &mut [u8; define::UNCRYPTED_SIZE],
+    text_cipher: &Vec<u8>) -> bool {
     let tmp = decrypt_aes(&digest, buf, text_cipher);
 
     if !tmp {
         return tmp;
     }
-    println!("tmp: {tmp}");
+    /*println!("tmp: {tmp}");
     if tmp {
         //totp
-        let txt: String = String::from_utf8(buf.to_ascii_uppercase())
-                    .expect("Something went wrong with private Key.");
-        let txt = txt.trim_end_matches('\0');
+        hex_str = String::from_utf8(buf.to_vec()).unwrap();
+        //hex_str  = &String::from_utf8(buf.to_vec()).unwrap();
+        hex_str.trim_end_matches('\0');
 
-        if !tools::regex_key(&txt) {
+        if !tools::regex_key(&hex_str) {
             eprintln!("Key is invalid hex format");
             return false;
         }
-    }
+    }*/
     return true;
 }

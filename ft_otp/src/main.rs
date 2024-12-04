@@ -55,12 +55,18 @@ fn read_crypt(k_flag: &String, digest: &DigestBytes) {
                         return ();
                     }
                     text_cipher.resize(define::ENCRYPTED_SIZE, 0);
+                    //let mut hex_str: String = Default::default();
                     let res: bool = tools_decrypt::decrypt_bytes(digest, &mut buf, &text_cipher);
-
+                    let hex_str = String::from_utf8(buf.to_vec()).unwrap();
+                    let hex_str = hex_str.trim_end_matches('\0');
+                    if !tools::regex_key(&hex_str) {
+                        eprintln!("Key is invalid hex format");
+                        return ();
+                    }
                     if res {
                         //call totp
                         println!("call totp");
-                        totp::start_totp(/*digest, */&buf);
+                        totp::start_totp(/*digest, */hex_str);
                     }
                 },
                 Err(e) => {eprintln!("Error: {e}")},
@@ -196,7 +202,7 @@ fn encode_part(buf: &Vec<u8>) {
                 hash_input(&entry, buf, true);
             } else {
                 let ask: bool
-                        = tools::ask_quesion("Do you want to delete existing secret?");
+                        = tools::ask_question("Do you want to delete existing secret?");
                 if ask {
                     let _ = entry.delete_credential();
                     println!("Deleted successfully");
