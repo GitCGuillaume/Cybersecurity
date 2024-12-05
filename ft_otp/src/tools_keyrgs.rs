@@ -1,9 +1,9 @@
 use keyring::Entry;
 
+/* Compare hashed secrets */
 pub fn cmp_keyring(secret: &[u8], secret_krng: &Vec<u8>) -> bool {
     let res: bool = secret == secret_krng;
 
-    println!("secret cmp: {res}");
     if res {
         println!("Secret is correct!");
     } else {
@@ -12,6 +12,7 @@ pub fn cmp_keyring(secret: &[u8], secret_krng: &Vec<u8>) -> bool {
     res
 }
 
+/* Get hashed secret from keyring */
 fn get_secret_keyring(entry: &Entry) -> Result<Vec<u8>, keyring::Error> {
     let ret_secret: Result<Vec<u8>, keyring::Error> = entry.get_secret();
 
@@ -30,8 +31,10 @@ pub fn request_entry() -> Result<Entry, keyring::Error> {
     entry
 }
 
-//ask for keyring
-//if no keyring ask user to enter a secret
+/*
+ * ask for keyring
+ * if no keyring ask user to enter a secret
+ */
 pub fn register_keyring(entry: &Entry, secret: &[u8]) -> bool {
     let res = entry.set_secret(secret);
     let res = match res {
@@ -50,7 +53,7 @@ pub fn register_keyring(entry: &Entry, secret: &[u8]) -> bool {
 
 /* Get a keyring using username */
 pub fn get_keyring(entry: &Entry) -> Result<Vec<u8>, keyring::Error> {
-    let res_secret = get_secret_keyring(entry);
+    let res_secret: Result<Vec<u8>, keyring::Error> = get_secret_keyring(entry);
 
     res_secret
 }

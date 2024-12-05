@@ -7,6 +7,7 @@ use std::{
 use regex::Regex;
 use crate::define;
 
+/* Ask if delete secret */
 pub fn ask_question(question: &str) -> bool {
     let mut buf: String = Default::default();
 
@@ -25,6 +26,7 @@ pub fn ask_question(question: &str) -> bool {
     return false;
 }
 
+/* Ask secret from user */
 pub fn get_input(input: &mut String ) -> Result<usize, std::io::Error> {
     println!("Please enter a secret:");
     let res_count: Result<usize, std::io::Error> = stdin().read_line(input);
@@ -33,24 +35,33 @@ pub fn get_input(input: &mut String ) -> Result<usize, std::io::Error> {
 }
 
 /* Try to create file then write in */
-pub fn file_new_and_write(content: &[u8; define::ENCRYPTED_SIZE], name: &str) {
+pub fn file_new_and_write(content: &[u8; define::ENCRYPTED_SIZE],
+    name: &str)
+    -> bool {
     let res_file: Result<File, std::io::Error> = File::create(name);
 
-    match res_file {
+    let res: bool = match res_file {
         Ok(mut file) => {
             let res_buf: Result<(), std::io::Error> = file.write_all(content);
 
-            match res_buf {
+            let res = match res_buf {
                 Ok(_) => {
                     println!("Key was successfully saved in {0}", name);
+                    true
                 },
-                Err(e) => {eprintln!("Error: {e}")},
-            }
+                Err(e) => {
+                    eprintln!("Error: {e}");
+                    false
+                },
+            };
+            res
         },
         Err(e) => {
             eprintln!("Error: {e}");
+            return false;
         },
-    }
+    };
+    res
 }
 
 /* Open then read file */
@@ -60,11 +71,8 @@ pub fn open(g_flag: &String) -> Result<File, std::io::Error> {
 
 /* Hexa Regex checker */
 pub fn regex_key(value: &str) -> bool {
-    println!("value:{value}");
-    /*for c in value.chars() {
-        println!("{c:?}");
-    }*/
-    let regex: Result<Regex, regex::Error> = Regex::new("^(?m)[a-fA-F0-9]+$").map(|f|f);
+    let regex: Result<Regex, regex::Error>
+                = Regex::new("^(?m)[a-fA-F0-9]+$").map(|f|f);
     let res: bool = match regex {
         Ok(reg) => {
             let captures = reg.split(value);
