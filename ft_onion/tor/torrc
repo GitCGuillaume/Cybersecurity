@@ -1,0 +1,5 @@
+HiddenServiceDir /var/lib/tor/hidden_service/
+HiddenServicePort 80 nginx:80
+
+HiddenServiceDir /var/lib/tor/hidden_service_2/
+HiddenServicePort 4242 nginx:4242

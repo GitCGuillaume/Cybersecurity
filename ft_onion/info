@@ -1,0 +1,13 @@
+https://tb-manual.torproject.org/onion-services/
+Just like any other website, you will need to know the address
+    of an onion service in order to connect to it.
+    An onion address consists of 56 letters and numbers,
+    followed by ".onion".
+Another way to learn about an onion site is
+    if the website administrator has implemented
+    a feature called Onion-Location.
+
+https://2019.www.torproject.org/docs/tor-manual.html.en
+https://community.torproject.org/fr/onion-services/advanced/onion-location/
+https://community.torproject.org/fr/onion-services/
+https://community.torproject.org/fr/onion-services/setup/

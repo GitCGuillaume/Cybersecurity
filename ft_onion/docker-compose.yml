@@ -1,0 +1,23 @@
+services:
+  nginx:
+    build: nginx
+    volumes:
+      - nginx:/etc/nginx/:ro
+    networks:
+      - tor-nt
+
+  tor:
+    build: tor
+    volumes:
+      - tor:/etc/tor/:ro
+    networks:
+      - tor-nt
+    depends_on:
+      - nginx
+
+volumes:
+  nginx:
+  tor:
+
+networks:
+  tor-nt:
