@@ -1,5 +1,10 @@
 FROM debian:bookworm-20241202-slim
 USER root
+ARG NGINX_PSW
+#start This is for correction only
+RUN useradd test
+RUN echo test:$NGINX_PSW | cat | chpasswd
+#end
 RUN apt-get update -y
 RUN apt-get install -y nginx
 #RUN rm /var/www/html
