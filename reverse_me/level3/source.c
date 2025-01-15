@@ -14,13 +14,14 @@ void    ____syscall_malloc(void) {
 int main(void) {
     char c[100];
     char d[9];
-    char  e[33] = {0};
+    //char  e[33] = {0};
     //int  f;
-    int  g;
+    size_t  g;
     int  h;
+
     printf("Please enter key:\n");
     int res = scanf("%23s", c);
-printf("r:%d\n", res);
+
     if (res != 1)
         ___syscall_malloc();
     //cmp eax:50(2)
@@ -30,16 +31,15 @@ printf("r:%d\n", res);
         ___syscall_malloc();
     fflush(stdin);
     memset(d, 0, sizeof(d));
-    e[0] = 42;
-    e[1] = 0;
+    d[0] = 42;
+    d[1] = 0;
     g = 2;
     h = 1;
-    res = 0;
     while (1) {
-        if (8 < strlen(e)) {
+        res = 0;
+        if (!(strlen(d) >= 0x8)) {
             res = g < strlen(c);
         }
-        printf("br:%d\n", res & 1);
         if (!(res & 1))
             break ;
         char e[4];
@@ -52,5 +52,29 @@ printf("r:%d\n", res);
         d[h] = res;
         h += 1;
     }
-    //strcmp(d, ********)
+    res = strcmp(d, "********");
+    printf("s:%d\n", res);
+    int i = res;
+    res -= 0xfffffffe;
+    
+    res = i;
+    res -= 0xffffffff;
+    
+    res = i;
+    res -= 0x1;
+
+    res = i;
+    res -= 0x2;
+
+    res = i;
+    res -= 0x3;
+
+    res = i;
+    res -= 0x4;
+
+    res = i;
+    res -= 0x5;
+
+    res = i;
+    res -= 0x73;
 }
