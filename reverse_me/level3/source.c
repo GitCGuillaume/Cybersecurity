@@ -14,8 +14,6 @@ void    ____syscall_malloc(void) {
 int main(void) {
     char c[100];
     char d[9];
-    //char  e[33] = {0};
-    //int  f;
     size_t  g;
     int  h;
 
@@ -24,7 +22,6 @@ int main(void) {
 
     if (res != 1)
         ___syscall_malloc();
-    //cmp eax:50(2)
     if (c[1] != '2')
         ___syscall_malloc();
     if (c[0] != '4')
@@ -52,29 +49,61 @@ int main(void) {
         d[h] = res;
         h += 1;
     }
-    res = strcmp(d, "********");
-    printf("s:%d\n", res);
-    int i = res;
-    res -= 0xfffffffe;
-    
-    res = i;
-    res -= 0xffffffff;
-    
-    res = i;
-    res -= 0x1;
+    unsigned int res2 = strcmp(d, "********");
+    unsigned int i = res2;
 
-    res = i;
-    res -= 0x2;
-
-    res = i;
-    res -= 0x3;
-
-    res = i;
-    res -= 0x4;
-
-    res = i;
-    res -= 0x5;
-
-    res = i;
-    res -= 0x73;
+    res2 -= 0xfffffffe;
+    if (res2) {
+        res2 = i;
+        res2 -= 0xffffffff;
+        if (res2) {
+            res2 = i;
+            if (res) { //test eax eax
+                res2 = i;
+                res2 -= 1;
+                if (res) {
+                    res2 = i;
+                    res2 -= 2;
+                     if (res) {
+                        res2 = i;
+                        res2 -= 3;
+                        if (res) {
+                            res2 = i;
+                            res2 -= 4;
+                            if (res) {
+                                res2 = i;
+                                res2 -= 5;
+                                if (res) {
+                                    res2 = i;
+                                    res2 -= 0x73;
+                                     if (res) {
+                                        ___syscall_malloc();
+                                        return (1);
+                                    }
+                                    ___syscall_malloc();
+                                    return (1);
+                                }
+                                ___syscall_malloc();
+                                return (1);
+                            }
+                            ___syscall_malloc();
+                            return (1);
+                        }
+                        ___syscall_malloc();
+                        return (1);
+                    }
+                    ___syscall_malloc();
+                    return (1);
+                }
+                ___syscall_malloc();
+                return (1);
+            }
+            ____syscall_malloc();
+            return (0) ;
+        }
+        ___syscall_malloc();
+        return (1);
+    }
+    ___syscall_malloc();
+    return (1);
 }
