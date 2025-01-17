@@ -64,9 +64,54 @@ pub mod img {
     }
 
     /*
+     * Open file
+     */
+    fn open_file(_img_path: &String) -> bool {
+        let file = File::open(_img_path);
+
+        return match file {
+            Ok(_) => {
+                true
+            },
+            Err(_) => {
+                false
+            }
+        };
+    }
+
+    /*
     * Create and write in file
     */
     fn  create_image(_img_path: &String, i: &[u8]) {
+        let f: bool = open_file(_img_path);
+
+        if f {
+            eprintln!("File already exist");
+        } else {
+            let f: Result<File, std::io::Error> = File::create(_img_path);
+
+            match f {
+                Ok(mut buffer) => {
+                    let res: Result<(), std::io::Error> = buffer.write_all(i);
+
+                    match res {
+                        Ok(_) => {
+                            println!("Image created")
+                        },
+                        Err(e) => {
+                            eprintln!("Couldn't write to file: {e}");
+                        },
+                    }
+                },
+                Err(e) => {
+                    eprintln!("Error: {e}");
+                }
+            }
+        }
+    }
+
+    
+    /*fn  create_image(_img_path: &String, i: &[u8]) {
         let buffer: Result<File, std::io::Error> = File::create_new(_img_path);
 
         match buffer {
@@ -85,7 +130,7 @@ pub mod img {
                 eprintln!("Error: {e}");
             },
         }
-    }
+    }*/
 
     /* Start of image creation, call all functions to create an image */
     pub async fn process_image(i: Response, options: &parse::OptionUser) -> Result<(), Error> {

@@ -4,7 +4,7 @@
 int main(void) {
     char c[100];
 
-    printf("Please enter key:\n");
+    printf("Please enter key: ");
     scanf("%s", c);
     int ret = strcmp(c, "__stack_check");
 

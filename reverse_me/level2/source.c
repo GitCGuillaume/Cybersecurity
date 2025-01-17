@@ -28,7 +28,7 @@ int main(void) {
     int i;
 
     a = 0;
-    printf("Please enter key:\n");
+    printf("Please enter key: ");
     a = scanf("%23s", c);
     if (a != 1)
         no();

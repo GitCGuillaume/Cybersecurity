@@ -17,7 +17,7 @@ int main(void) {
     size_t  g;
     int  h;
 
-    printf("Please enter key:\n");
+    printf("Please enter key: ");
     int res = scanf("%23s", c);
 
     if (res != 1)
