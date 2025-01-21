@@ -26,14 +26,12 @@ fn  parse_flags(value: &String, flag: &str) -> (bool, usize) {
     
     match first_pos {
         Some(pos) => {
-            eprintln!("flag:{flag} poss:{pos}");
             let mut _str: &str = &value[pos..];
 
             return (true, pos);
         },
         None => return (false, 0)
     };
-    return (false, 0);
 }
 
 /*
@@ -42,7 +40,7 @@ fn  parse_flags(value: &String, flag: &str) -> (bool, usize) {
  * add +1 or +2 to pos because of start position being at first -
  * then register the asked value
  */
-pub fn  find_flags(value: &String, list: &mut Flags) {
+pub fn  find_reverse_key(value: &String, list: &mut Flags) {
     let (r_bool, r_pos) = parse_flags(value, &"-r");
     let (sr_bool, sr_pos) = parse_flags(value, &"-sr");
     let (rev_bool, rev_pos) = parse_flags(value, &"--reverse");
@@ -57,7 +55,6 @@ pub fn  find_flags(value: &String, list: &mut Flags) {
             which_bool = 2;
         }
         if pos < rev_pos + 2 && rev_bool {
-            pos = rev_pos;
             which_bool = 3;
         }
         if which_bool == 1 {
