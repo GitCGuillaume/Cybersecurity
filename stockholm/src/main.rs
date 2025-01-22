@@ -20,14 +20,6 @@ fn run_commands_flags(list: &Flags) -> bool {
     false
 }
 
-fn run_decrypt() {
-
-}
-
-fn run_encrypt() {
-
-}
-
 fn main() -> ExitCode {
     let args: std::iter::Skip<std::env::Args> = std::env::args().skip(1);
     let mut list = Flags {
@@ -52,7 +44,9 @@ fn main() -> ExitCode {
     if list.reverse_key.len() != 0 {
 
     } else {
-
+        //check key AES size
+        let res = encrypt::start_encrypt();
+        println!("res:{}", res);
     }
     return ExitCode::SUCCESS;
 }
