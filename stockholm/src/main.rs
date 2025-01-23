@@ -45,7 +45,7 @@ fn main() -> ExitCode {
 
     } else {
         //check key AES size
-        let res = encrypt::start_encrypt();
+        let res = encrypt::start_encrypt(&list);
         println!("res:{}", res);
     }
     return ExitCode::SUCCESS;

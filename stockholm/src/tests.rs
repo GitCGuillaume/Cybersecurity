@@ -5,6 +5,7 @@ mod tests {
     use crate::tools::parse::find_reverse_key;
     use crate::encrypt;
     use std::fs::ReadDir;
+    use std::path::PathBuf;
     #[test]
     fn test_flags_r() {
         let mut s_flags = Flags {
@@ -320,8 +321,53 @@ mod tests {
         assert_eq!(res, false);
     }
 
-    fn test_encrypt_rename() {
+    #[test]
+    fn test_rename() {
+        let folder = "/home/guillaume/infection_cpy".to_owned();
+        let path1 = PathBuf::from(folder.to_owned() + "/der.der");
+        let res_open = std::fs::File::open(&path1);
 
+        match res_open {
+            Ok(open) => {
+                encrypt::infect::rename_infect(&path1);
+                let path1 = PathBuf::from(folder.to_owned() + "/der.der.ft");
+                let res_open = std::fs::File::open(&path1);
+
+                match res_open {
+                    Ok(open) => {
+                        assert_eq!(true, true);
+                    },
+                    Err(_) =>{
+                        assert_eq!(false, true);
+                    }
+                }
+            },
+            Err(_) =>{
+            }
+        }
+
+        let folder = "/home/guillaume/infection_cpy".to_owned();
+        let path1 = PathBuf::from(folder.to_owned() + "/test.mp3");
+        let res_open = std::fs::File::open(&path1);
+
+        match res_open {
+            Ok(open) => {
+                encrypt::infect::rename_infect(&path1);
+                let path1 = PathBuf::from(folder.to_owned() + "/test.mp3.ft");
+                let res_open = std::fs::File::open(&path1);
+
+                match res_open {
+                    Ok(open) => {
+                        assert_eq!(true, true);
+                    },
+                    Err(_) =>{
+                        assert_eq!(false, true);
+                    }
+                }
+            },
+            Err(_) =>{
+            }
+        }
     }
 
     fn test_file_already_ft() {
