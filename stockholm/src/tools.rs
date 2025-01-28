@@ -20,8 +20,9 @@ fn  parse_flags(value: &String, flag: &str) -> bool {
     };
 }
 
-
-
+/*
+ * Try to find flags that need a boolean
+ */
 fn find_flags(value: &String, list: &mut Flags) {
     if parse_flags(value, "--help") {
         list.help = true;
@@ -55,6 +56,10 @@ pub fn set_key(value: &String, list: &mut Flags) {
     }
 }
 
+/*
+ * Set flags
+ * Try to set reverse_key if needed
+ */
 pub fn get_flags(value: &String, list: &mut Flags) {
     find_flags(value, list);
     parse::find_reverse_key(value, list);

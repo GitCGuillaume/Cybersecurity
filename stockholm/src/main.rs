@@ -1,6 +1,7 @@
 mod tools;
 mod tests;
 mod encrypt;
+mod decrypt;
 use std::process::ExitCode;
 use tools::{Flags, get_flags, set_key};
 
@@ -20,6 +21,13 @@ fn run_commands_flags(list: &Flags) -> bool {
     false
 }
 
+
+/*
+ * Start program
+ * Set flags
+ * Check key length
+ * Choose between encryption and decryption
+ */
 fn main() -> ExitCode {
     let args: std::iter::Skip<std::env::Args> = std::env::args().skip(1);
     let mut list = Flags {
@@ -32,21 +40,42 @@ fn main() -> ExitCode {
     if args.len() == 0 {
         return ExitCode::SUCCESS;
     }
+    let mut value: String = String::new();
     for i in args {
-        get_flags(&i, &mut list);
-        set_key(&i, &mut list);
+        if i == "-r" {
+            value = i.to_owned();
+            continue;
+        } else if 0 < value.len() {
+            value.push_str(i.as_str());
+        } else {
+            value.clear();
+            value = i.to_owned();
+        }
+        get_flags(&value, &mut list);
+        set_key(&value, &mut list);
+        value.clear();
     }
-    println!("k:{0} rev:{1} h:{2} v:{3} s:{4}", list.key, list.reverse_key,
-        list.help, list.version, list.silent);
     if run_commands_flags(&list) {
         return ExitCode::SUCCESS;
     }
     if list.reverse_key.len() != 0 {
-
+        if list.reverse_key.len() != 16 {
+            eprintln!("Key must be of size 16 characters: {}",
+                list.reverse_key.len());
+            return ExitCode::FAILURE;
+        }
+        if !decrypt::start_decrypt(&list) {
+            return ExitCode::FAILURE;
+        }
     } else {
-        //check key AES size
-        let res = encrypt::start_encrypt(&list);
-        println!("res:{}", res);
+        if list.key.len() != 16 {
+            eprintln!("Key must be of size 16 characters.: {}",
+                list.key.len());
+            return ExitCode::FAILURE;
+        }
+        if !encrypt::start_encrypt(&list) {
+            return ExitCode::FAILURE;
+        }
     }
     return ExitCode::SUCCESS;
 }
