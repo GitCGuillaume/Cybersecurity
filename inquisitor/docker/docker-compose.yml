@@ -24,6 +24,12 @@ services:
     networks:
       - inquisitor_net
 
+  client:
+    container_name: client
+    build: client
+    networks:
+      - inquisitor_net
+
 
 networks:
   inquisitor_net:
