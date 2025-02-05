@@ -1,11 +1,4 @@
 services:
-  web:
-   image: nginx
-   ports:
-     - "8080:80"
-   networks:
-     - inquisitor_net
-
   ftp:
     container_name: ftp
     image: ftp:v1.0
@@ -15,22 +8,21 @@ services:
       - 21:21
     environment:
       - USR_PSW=$FTP_PSW
-    networks:
-      - inquisitor_net
+        #networks:
+        #- inquisitor_net
 
   poison:
     container_name: poison
     build: poison
-    networks:
-      - inquisitor_net
+      #networks:
+      #- inquisitor_net
 
   client:
     container_name: client
     build: client
-    networks:
-      - inquisitor_net
-
-
-networks:
-  inquisitor_net:
-
+      #networks:
+      #- inquisitor_net
+  
+  tcpdump:
+    container_name: tcpdump
+    build: tcpdump
