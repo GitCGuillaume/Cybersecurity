@@ -15,6 +15,8 @@
  * }
  */
 
+
+
 //./inquisitor ip_src mac_src ip_target mac_target
 //get arp table
 //
@@ -47,6 +49,18 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 	Pcap c_pcap(argv[1], argv[2], argv[3], argv[4]);
-	c_pcap.setPcapList();
+	std::cout << "find: " << c_pcap.SetPcapList() << std::endl;
+	try {
+		c_pcap.SetDeviceCapture(c_pcap.GetDevice());
+		//activate
+		//get arp
+		//filter
+	} catch (std::invalid_argument& err) {
+		std::cerr << err.what() << std::endl;
+		return 1;
+	} catch (std::runtime_error& err) {
+		std::cerr << err.what() << std::endl;
+		return 1;
+	}
 	return 0;
 }
