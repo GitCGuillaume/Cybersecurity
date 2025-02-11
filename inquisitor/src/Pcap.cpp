@@ -8,6 +8,8 @@ Pcap::Pcap(const char *ip_src, const char *mac_src,
 	this->_mac_select = NULL;
 	this->_pcap_list = NULL;
 	this->_device_select = NULL;
+	this->_device_capture = NULL;
+	this->_fp = NULL;
 }
 
 /*
@@ -16,12 +18,25 @@ Pcap::Pcap(const char *ip_src, const char *mac_src,
 Pcap::~Pcap() {
 	if (this->_pcap_list)
 		pcap_freealldevs(this->_pcap_list);
-	//pcap_close(this->pcap);
+	if (this->_device_capture)
+		pcap_close(this->_device_capture);
+	if (this->_fp) {
+		pcap_freecode(this->_fp);
+		delete this->_fp;
+	}
 	std::cout << "Destroyed" <<std::endl;
 }
 
 struct pcap_if * Pcap::GetDevice() const {
 	return this->_device_select;
+}
+
+pcap_t	* Pcap::GetDeviceCapture() const {
+	return this->_device_capture;
+}
+
+struct bpf_program * Pcap::getBpf() const {
+	return this->_fp;
 }
 
 /*
@@ -31,8 +46,8 @@ struct pcap_if * Pcap::GetDevice() const {
  */
 static pcap_addr *search_address(struct pcap_addr *elem,
 		std::string &ip_src, const struct ether_addr *mac_src) {
-	struct  sockaddr_in *addr = (sockaddr_in *)elem->addr;
-	struct sockaddr_ll *macc = (sockaddr_ll *)elem->addr;
+	struct  sockaddr_in *addr = reinterpret_cast<sockaddr_in *>(elem->addr);
+	struct sockaddr_ll *macc = reinterpret_cast<sockaddr_ll *>(elem->addr);
 	char *ip = NULL;
 
 
@@ -77,7 +92,7 @@ static struct sockaddr_in *get_afinet(pcap_addr *addr_find) {
 static struct sockaddr_ll *get_afpacket(pcap_addr *addr_find) {
 	while (addr_find) {
 		if (addr_find->addr->sa_family == AF_PACKET) {
-			return (sockaddr_ll *)addr_find->addr;
+			return reinterpret_cast<sockaddr_ll *>(addr_find->addr);
 		}
 		addr_find = addr_find->next;
 	}
@@ -94,10 +109,10 @@ bool Pcap::SetPcapList(void) {
 	if (res)
 		return false;
 	pcap_if_t *list_search = this->_pcap_list;
-	//pcap_if_t *list_compare = this->pcap_list;
 	pcap_addr *addr_list = NULL;
 	pcap_addr *addr_find = NULL;
-	
+
+	//search for device	
 	while (list_search) {
 		addr_list = list_search->addresses;
 		while (addr_list) {
@@ -106,11 +121,14 @@ bool Pcap::SetPcapList(void) {
 				break ;
 			addr_list = addr_list->next;
 		}
+		if (addr_find)
+			break ;
 		list_search = list_search->next;
 	}
 	bool find_ip = false;
 	bool find_mac = false;
 
+	//set ip and check if both ip and mac are from the right device
 	if (addr_find) {
 		const struct  sockaddr_in *addr = get_afinet(addr_find);
 		const struct sockaddr_ll *macc = get_afpacket(addr_find);
@@ -148,6 +166,8 @@ bool Pcap::SetPcapList(void) {
 		std::cout <<
 		"i_sel: " << *this->_ip_select << "\n"
 		<< "m_sel: " << *this->_mac_select << std::endl;
+		std::cout<<"select: "<<addr_list<<std::endl;
+		std::cout<<"select: "<<list_search<<std::endl;
 		this->_device_select = list_search;
 		return true;
 	}
@@ -156,11 +176,44 @@ bool Pcap::SetPcapList(void) {
 
 void	Pcap::SetDeviceCapture(pcap_if_t *src) {
 	char errbuf[PCAP_ERRBUF_SIZE] = {0};
-	// if src empty then throw
-	if (!src)
-		throw std::invalid_argument("Couldn't find a device to start capture.");
+
+	//if (!src)
+	//	throw std::invalid_argument("Couldn't find a device to start capture.");
 	this->_device_capture = pcap_create(src->name, errbuf);
 	if (!this->_device_capture)
-		throw std::runtime_error("Failed to start capture.");
-	//if null throw errbuf val
+		throw std::runtime_error(errbuf);
+}
+
+int	Pcap::activateCapture(pcap_t *src) const {
+	return pcap_activate(this->_device_capture);
+}
+
+int	Pcap::compileFilterArp(pcap_t *src)
+{
+	struct  sockaddr_in *addr = reinterpret_cast<sockaddr_in *>(this->_device_select);
+
+	if (!addr)
+		return 1;
+	in_addr_t ipv4 = addr->sin_addr.s_addr;
+	if (!this->_fp)
+		this->_fp = new struct bpf_program;
+	if (!this->_fp)
+		return 1;
+	return pcap_compile(src, this->_fp, "arp", 0, ipv4);
+}
+
+int	Pcap::setFilter(pcap_t *src, struct bpf_program *fp) const {
+	return pcap_setfilter(src, fp);
+}
+
+static void handler(u_char *user, const struct pcap_pkthdr *h,
+	    const u_char *bytes) {
+//	std::cout << std::hex << "*user:" << *user << std::endl;
+//	std::cout << std::hex << "*bytes:" << *bytes << std::endl;
+	printf("user: %u\nbytes:%u\n", *user, *bytes);
+}
+
+int	Pcap::loopPcap(pcap_t *src, u_char *user) {
+	int res = pcap_loop(src, INFINITE, handler, user);
+	return res;
 }
