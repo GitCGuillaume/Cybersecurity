@@ -6,7 +6,10 @@
 #include <Pcap.hpp>
 #include <arpa/inet.h>
 #include <netinet/ether.h>
+#include <netinet/ip.h>
+#include <netinet/tcp.h>
 #include <sys/socket.h>
+#include <net/ethernet.h>
 #include <linux/if_packet.h>
 #include <stdio.h>
 #include <iomanip>
@@ -14,6 +17,7 @@
 #include <cstdlib>
 #include <pcap/pcap.h>
 #include <iostream>
+#include "ft_macros.hpp"
 
 class Pcap {
 	private:
@@ -26,6 +30,7 @@ class Pcap {
 		pcap_if_t *_pcap_list;
 		pcap_if_t *_device_select;
 		pcap_t	*_device_capture;
+		struct bpf_program *_fp;
 		//arp
 
 		Pcap();
@@ -34,11 +39,15 @@ class Pcap {
 		Pcap(const char *ip_src, const char *mac_src,
 				const char *ip_target, const char *mac_target);
 		~Pcap(); //<< also clear arp?
-		struct pcap_if * GetDevice() const;
-		pcap_t *GetDeviceCapture() const;
-		bool SetPcapList(void);
-		void SetDeviceCapture(pcap_if_t *src);
-		
+		struct	pcap_if * GetDevice() const;
+		pcap_t	*GetDeviceCapture() const;
+		struct bpf_program *getBpf() const;
+		bool	SetPcapList(void);
+		void	SetDeviceCapture(pcap_if_t *src);
+		int	activateCapture(pcap_t *src) const;
+		int	compileFilterArp(pcap_t *src);
+		int	setFilter(pcap_t *src, struct bpf_program *fp) const;
+		int	loopPcap(pcap_t *src, u_char *user);
 		//init arp
 		//clear arp
 };

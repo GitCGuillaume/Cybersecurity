@@ -11,6 +11,15 @@ services:
         #networks:
         #- inquisitor_net
 
+  filezilla:
+    container_name: fl
+    image: linuxserver/filezilla
+    ports:
+      - 3000
+      - 3001
+    security_opt:
+      - seccomp:unconfined
+
   poison:
     container_name: poison
     build: poison

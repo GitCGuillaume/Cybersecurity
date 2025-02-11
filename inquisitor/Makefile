@@ -8,28 +8,43 @@ re:
 	echo ""
 
 build:
+	docker compose -f docker/docker-compose.yml pull filezilla
 	docker compose -f docker/docker-compose.yml build
 
 up:
+	docker compose -f docker/docker-compose.yml pull filezilla
 	docker compose -f docker/docker-compose.yml up -d
 
 down:
 	docker compose -f docker/docker-compose.yml down
 
 poison:
+	docker compose -f docker/docker-compose.yml pull filezilla
 	docker compose -f docker/docker-compose.yml up -d
-	docker compose -f docker/docker-compose.yml \
-		exec -d poison arpspoof -i eth0 -t client ftp
+	#docker compose -f docker/docker-compose.yml \
+	#	exec -d poison arpspoof -i eth0 -t client ftp
 	#docker compose -f docker/docker-compose.yml \
 	#	exec -d poison arpspoof -i eth0 -t ftp client
 	#GATEWAY=$$(docker inspect \
-	#  		--format='{{range .NetworkSettings.Networks}}{{.Gateway}}{{end}}' \
+	 # 		--format='{{range .NetworkSettings.Networks}}{{.Gateway}}{{end}}' \
 	#  		poison); \
 	#docker compose -f docker/docker-compose.yml \
 	#	exec -d poison arpspoof -i eth0 -t "$${GATEWAY}" poison
+	GATEWAY=$$(docker inspect \
+	 		--format='{{range .NetworkSettings.Networks}}{{.Gateway}}{{end}}' \
+	  		poison); \
+	docker compose -f docker/docker-compose.yml \
+		exec -d poison arpspoof -i eth0 -t ftp "$${GATEWAY}"
+	docker compose -f docker/docker-compose.yml \
+		exec -d poison arpspoof -i eth0 -t "$${GATEWAY}" ftp
+	docker compose -f docker/docker-compose.yml \
+		exec -d poison arpspoof -i eth0 -t ftp fl
+	docker compose -f docker/docker-compose.yml \
+		exec -d poison arpspoof -i eth0 -t fl ftp
 
 test:
 	#install
+	rm -rf tests/Catch2
 	git -C tests/ clone https://github.com/catchorg/Catch2.git	
 	cd ./tests/Catch2; \
 	cmake -B build -S . -DBUILD_TESTING=OFF; \
