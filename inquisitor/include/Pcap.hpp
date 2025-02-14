@@ -1,6 +1,7 @@
 #ifndef FT_PCAP_HPP
 # define FT_PCAP_HPP
 
+#include <map>
 #include <iostream>
 #include <pcap/pcap.h>
 #include <Pcap.hpp>
@@ -8,8 +9,9 @@
 #include <netinet/ether.h>
 #include <netinet/ip.h>
 #include <netinet/tcp.h>
-#include <sys/socket.h>
 #include <net/ethernet.h>
+#include <net/if_arp.h>
+#include <sys/socket.h>
 #include <linux/if_packet.h>
 #include <stdio.h>
 #include <iomanip>

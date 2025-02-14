@@ -1,3 +1,5 @@
+.env
+docker/.env
 tests/Catch2
 tests/files/build
 src/a.out

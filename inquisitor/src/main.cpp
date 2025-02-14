@@ -9,6 +9,9 @@
 #include <csignal>
 #include "ft_macros.hpp"
 
+//a delete
+//fin delete
+
 /*
  * class {
  *
@@ -97,7 +100,10 @@ int start_capture(Pcap &c_pcap) {
 	} catch (std::runtime_error& err) {
 		std::cerr << err.what() << std::endl;
 		return 1;
-	} catch (std::bad_alloc err) {
+	} catch (std::bad_alloc& err) {
+		std::cerr << err.what() << std::endl;
+		return 1;
+	} catch (std::exception& err) {
 		std::cerr << err.what() << std::endl;
 		return 1;
 	}

@@ -210,9 +210,55 @@ int	Pcap::compileFilterArp(pcap_t *src)
 int	Pcap::setFilter(pcap_t *src, struct bpf_program *fp) const {
 	return pcap_setfilter(src, fp);
 }
-
+#include <fstream>
 //
-static void handle_arp(){}
+static void handle_arp(const u_char *bytes, bpf_u_int32 len) {
+	std::ofstream old_cout;
+	const struct ether_arp *arp= reinterpret_cast<const struct ether_arp *>(bytes + ETH_HLEN);
+
+	old_cout.copyfmt(std::cout);
+	std::cout << "arp: " << arp << std::endl;
+	if (arp) {
+		std::cout << "Sender hardware address: ";
+		for (unsigned int i = 0; i < ETH_ALEN; i++) {
+			std::cout << std::setw(2) << std::setfill('0') \
+				<< std::uppercase << std::hex \
+				<< static_cast<int>(arp->arp_sha[i]) << std::dec;
+			if (i + 1 != ETH_ALEN)
+				std::cout << ":";
+		}
+		std::cout.copyfmt(old_cout);
+		std::cout << std::endl;
+		//prevoir macro 4
+		std::cout << "Sender IPv4 address: ";
+		for (unsigned int i = 0; i < FT_IPV4_LEN; i++) {
+			std::cout << static_cast<int>(arp->arp_spa[i]);
+			if (i + 1 != 4)
+				std::cout << ".";
+		}
+		std::cout.copyfmt(old_cout);
+		std::cout << std::endl;
+		std::cout << "Target hardware address: ";
+		for (unsigned int i = 0; i < ETH_ALEN; i++) {
+			std::cout << std::setw(2) << std::setfill('0') \
+				<< std::uppercase << std::hex \
+			       	<< static_cast<int>(arp->arp_tha[i]) << std::dec;
+			if (i + 1 != ETH_ALEN)
+				std::cout << ":";
+		}
+		std::cout.copyfmt(old_cout);
+		std::cout << std::endl;
+		//prevoir macro 4
+		std::cout << "Target IPv4 address: ";
+		for (unsigned int i = 0; i < FT_IPV4_LEN; i++) {
+			std::cout << static_cast<int>(arp->arp_tpa[i]);
+			if (i + 1 != 4)
+				std::cout << ".";
+		}
+		std::cout.copyfmt(old_cout);
+		std::cout << std::endl;
+	}
+}
 
 /*
  * Get tcp part from packet
@@ -223,23 +269,25 @@ static void handle_arp(){}
 static void handle_ftp(const u_char *bytes, bpf_u_int32 len){
 	if (!bytes)
 		return ;
-	struct ethhdr *eth = (struct ethhdr *)bytes;
-	bpf_u_int32 skip_size = sizeof(*eth);
-	printf("sk:%u\n", skip_size);
-	printf("B14: %x\n", bytes[skip_size]);
-	struct iphdr *ip = (struct iphdr *)(bytes + skip_size);
-	skip_size += (ip->ihl * 4);
-	printf("sk:%u ihl:%u 0xf:%u 0xf0:%u *4:%u\n", skip_size, ip->ihl, ip->ihl & 0xf, ip->ihl & 0xf0, ip->ihl * 4);
-	struct tcphdr *tcp = (struct tcphdr *)(bytes + skip_size);
-	skip_size += (tcp->doff * 4);
-	printf("sk:%u %u *4:%u\n", skip_size, tcp->doff, tcp->doff * 4);
-	u_char *ftp_bytes = (u_char *)(bytes + skip_size);
-	//enum pour choisir gogo
+	bpf_u_int32 size = ETH_HLEN;
+	const struct iphdr *ip = reinterpret_cast<const struct iphdr *>(bytes + size);
+	size += (ip->ihl * 4);
+	const struct tcphdr *tcp = reinterpret_cast<const struct tcphdr *>(bytes + size);
+	size += (tcp->doff * 4);
+	const u_char *ftp_bytes = (const u_char *)(bytes + size);
+	std::string fill_cmp;
+
 	if (ftp_bytes) {
-		len -= skip_size;
-		for (bpf_u_int32 i = 0; i < len; i++) {
+		len -= size;
+		/*for (bpf_u_int32 i = 0; i < len; i++) {
 			std::cout << ftp_bytes[i];
+			fill_cmp.push_back(ftp_bytes[i]);
+		}*/
+		if (!fill_cmp.find_first_of("STOR") || !fill_cmp.find_first_of("RETR")) {
+			fill_cmp.replace(0, 4, "");
+			std::cout<<"FTP name is:" << fill_cmp << std::endl;
 		}
+		fill_cmp.clear();
 		std::cout << std::endl;
 	}
 }
@@ -264,8 +312,12 @@ static void handler(u_char *user, const struct pcap_pkthdr *h,
 	}
 	printf("\n");
 	const struct ether_header *eth = (const struct ether_header *)bytes;
+	std::ofstream old_cout;
+	old_cout.copyfmt(std::cout);
 	std::cout << std::hex << ntohs(eth->ether_type) << std::endl;
+	std::cout.copyfmt(old_cout);
 	if (eth && ntohs(eth->ether_type) == ETHERTYPE_ARP) { // ARP
+		handle_arp(bytes, h->len);
 	} else if (eth && ntohs(eth->ether_type) == ETHERTYPE_IP) { // FTP
 		//get ftp file name
 		//sizeof(*eth) + sizeof(iphdr) + sizeof(tcp)
