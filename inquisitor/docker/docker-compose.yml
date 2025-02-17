@@ -32,6 +32,6 @@ services:
       #networks:
       #- inquisitor_net
   
-  tcpdump:
-    container_name: tcpdump
-    build: tcpdump
+      #tcpdump:
+      #container_name: tcpdump
+     #build: tcpdump

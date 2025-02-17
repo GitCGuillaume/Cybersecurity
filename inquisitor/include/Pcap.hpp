@@ -23,29 +23,34 @@
 
 class Pcap {
 	private:
-		std::string _ip_src;
-		std::string _mac_src;
-		std::string _ip_target;
-		std::string _mac_target;
+		const std::string _ip_src;
+		const std::string _mac_src;
+		const std::string _ip_target;
+		const std::string _mac_target;
+		const std::string _interface;
 		std::string *_ip_select;
 		std::string *_mac_select;
-		pcap_if_t *_pcap_list;
-		pcap_if_t *_device_select;
+		//pcap_if_t *_pcap_list;
+		//pcap_if_t *_device_select;
 		pcap_t	*_device_capture;
 		struct bpf_program *_fp;
+		bpf_u_int32	_netmask;
 		//arp
 
 		Pcap();
 
 	public:
 		Pcap(const char *ip_src, const char *mac_src,
-				const char *ip_target, const char *mac_target);
+				const char *ip_target, const char *mac_target,
+				std::string &interface);
 		~Pcap(); //<< also clear arp?
-		struct	pcap_if * GetDevice() const;
+		const std::string & getInterface() const;
+		//struct	pcap_if * GetDevice() const;
 		pcap_t	*GetDeviceCapture() const;
 		struct bpf_program *getBpf() const;
-		bool	SetPcapList(void);
-		void	SetDeviceCapture(pcap_if_t *src);
+		//bool	SetPcapList(void);
+		void	SetDeviceCapture(const std::string &interface);
+		int	setTimeout(pcap_t *src, int to_ms) const;
 		int	activateCapture(pcap_t *src) const;
 		int	compileFilterArp(pcap_t *src);
 		int	setFilter(pcap_t *src, struct bpf_program *fp) const;

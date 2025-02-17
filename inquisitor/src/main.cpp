@@ -55,22 +55,27 @@ int loop_filter(Pcap &c_pcap) {
 }
 
 int start_capture(Pcap &c_pcap) {
-	pcap_if_t *device;
-	pcap_t	*device_capture;
+	//pcap_if_t *device;
+	pcap_t	*device_capture = NULL;
 	int	error;
-	struct bpf_program *fp;
+	struct bpf_program *fp = NULL;
 
 	try {
 		//get arp
-		device = c_pcap.GetDevice();
+		/*device = c_pcap.GetDevice();
 		if (!device) {
 			std::cerr << "Couldn't get device" << std::endl;
 			return 1;
-		}
-		c_pcap.SetDeviceCapture(device);
+		}*/
+		c_pcap.SetDeviceCapture(c_pcap.getInterface());
 		device_capture = c_pcap.GetDeviceCapture();
 		if (!device_capture) {
 			std::cerr << "Couldn't get device for capture." << std::endl;
+			return 1;
+		}
+		error = c_pcap.setTimeout(device_capture, 100);
+		if (error == PCAP_ERROR_ACTIVATED) {
+			std::cerr << "Capture already activated" << std::endl;
 			return 1;
 		}
 		error = c_pcap.activateCapture(device_capture);
@@ -139,7 +144,21 @@ int main(int argc, char *argv[]) {
 		}
 		return 1;
 	}
-	Pcap c_pcap(argv[1], argv[2], argv[3], argv[4]);
-	std::cout << "find: " << c_pcap.SetPcapList() << std::endl;
+	std::string interface("eth0");
+	if (argc == 6)
+		interface = argv[5];
+	std::cout<<"int:"<<interface<<std::endl;
+	Pcap c_pcap(argv[1], argv[2], argv[3]
+		, argv[4], interface);
+	/*if (c_pcap.SetPcapList()) {
+		std::cout << "[1] [2]" << std::endl;
+		return start_capture(c_pcap);
+	} else {
+		Pcap c_pcap_2(argv[3], argv[4], argv[1], argv[2]);
+
+		c_pcap_2.SetPcapList();
+		std::cout << "[3] [4]" << std::endl;
+		return start_capture(c_pcap_2);
+	}*/
 	return start_capture(c_pcap);
 }

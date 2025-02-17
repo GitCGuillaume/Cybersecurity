@@ -1,23 +1,26 @@
 #include <Pcap.hpp>
 
 Pcap::Pcap(const char *ip_src, const char *mac_src,
-	  const char *ip_target, const char *mac_target) : _ip_src(ip_src), _mac_src(mac_src),
-		_ip_target(ip_target), _mac_target(mac_target) {
+	  const char *ip_target, const char *mac_target,
+	  std::string &interface) : _ip_src(ip_src), _mac_src(mac_src),
+		_ip_target(ip_target), _mac_target(mac_target),
+		_interface(interface) {
 	std::cout << "Pcap Created" <<std::endl;
 	this->_ip_select = NULL;
 	this->_mac_select = NULL;
-	this->_pcap_list = NULL;
-	this->_device_select = NULL;
+	//this->_pcap_list = NULL;
+	//this->_device_select = NULL;
 	this->_device_capture = NULL;
 	this->_fp = NULL;
+	this->_netmask = 0;
 }
 
 /*
  * Clear pcap allocation
  */
 Pcap::~Pcap() {
-	if (this->_pcap_list)
-		pcap_freealldevs(this->_pcap_list);
+	//if (this->_pcap_list)
+	//	pcap_freealldevs(this->_pcap_list);
 	if (this->_device_capture)
 		pcap_close(this->_device_capture);
 	if (this->_fp) {
@@ -28,9 +31,13 @@ Pcap::~Pcap() {
 	std::cout << "Destroyed" <<std::endl;
 }
 
-struct pcap_if * Pcap::GetDevice() const {
-	return this->_device_select;
+const std::string & Pcap::getInterface() const {
+	return this->_interface;
 }
+
+/*struct pcap_if * Pcap::GetDevice() const {
+	return this->_device_select;
+}*/
 
 pcap_t	* Pcap::GetDeviceCapture() const {
 	return this->_device_capture;
@@ -45,14 +52,13 @@ struct bpf_program * Pcap::getBpf() const {
  * if mac or ip address found, return the selected structure,
  * otherwise return NULL
  */
-static pcap_addr *search_address(struct pcap_addr *elem,
+/*static pcap_addr *search_address(struct pcap_addr *elem,
 		std::string &ip_src, const struct ether_addr *mac_src) {
 	if (!elem || !mac_src)
 		return NULL;
 	struct  sockaddr_in *addr = reinterpret_cast<sockaddr_in *>(elem->addr);
 	struct sockaddr_ll *macc = reinterpret_cast<sockaddr_ll *>(elem->addr);
 	char *ip = NULL;
-
 
 	switch (addr->sin_family) {
 		case AF_INET:
@@ -75,11 +81,11 @@ static pcap_addr *search_address(struct pcap_addr *elem,
 	}
 	return NULL;
 }
-
+*/
 /*
  * Search for AF_INET type address
  */
-static struct sockaddr_in *get_afinet(pcap_addr *addr_find) {
+/*static struct sockaddr_in *get_afinet(pcap_addr *addr_find) {
 	while (addr_find) {
 		if (addr_find->addr->sa_family == AF_INET) {
 			return (sockaddr_in *)addr_find->addr;
@@ -88,11 +94,11 @@ static struct sockaddr_in *get_afinet(pcap_addr *addr_find) {
 	}
 	return NULL;
 }
-
+*/
 /*
  * Search for AF_PACKET type address
  */
-static struct sockaddr_ll *get_afpacket(pcap_addr *addr_find) {
+/*static struct sockaddr_ll *get_afpacket(pcap_addr *addr_find) {
 	while (addr_find) {
 		if (addr_find->addr->sa_family == AF_PACKET) {
 			return reinterpret_cast<sockaddr_ll *>(addr_find->addr);
@@ -100,8 +106,8 @@ static struct sockaddr_ll *get_afpacket(pcap_addr *addr_find) {
 		addr_find = addr_find->next;
 	}
 	return NULL;
-}
-
+}*/
+/*
 bool Pcap::SetPcapList(void) {
 	if (!this->_ip_src.length() || !this->_mac_src.length())
 		return false;
@@ -176,15 +182,23 @@ bool Pcap::SetPcapList(void) {
 	}
 	return false;
 }
-
-void	Pcap::SetDeviceCapture(pcap_if_t *src) {
+*/
+void	Pcap::SetDeviceCapture(const std::string &interface) {
 	char errbuf[PCAP_ERRBUF_SIZE] = {0};
 
 	//if (!src)
 	//	throw std::invalid_argument("Couldn't find a device to start capture.");
-	this->_device_capture = pcap_create(src->name, errbuf);
+	std::cout << "dev:" << interface.c_str() << std::endl;
+	this->_device_capture = pcap_create(interface.c_str(), errbuf);
 	if (!this->_device_capture)
 		throw std::runtime_error(errbuf);
+	bpf_u_int32 netp = 0;
+	if (pcap_lookupnet(interface.c_str(), &netp, &this->_netmask, errbuf))
+		throw std::runtime_error(errbuf);
+}
+
+int	Pcap::setTimeout(pcap_t *src, int to_ms) const {
+	return pcap_set_timeout(src, to_ms);
 }
 
 int	Pcap::activateCapture(pcap_t *src) const {
@@ -193,18 +207,18 @@ int	Pcap::activateCapture(pcap_t *src) const {
 
 int	Pcap::compileFilterArp(pcap_t *src)
 {
-	if (!src || !this->_device_select)
+	if (!src)// || !this->_device_select)
 		return 1;
-	struct  sockaddr_in *addr = reinterpret_cast<sockaddr_in *>(this->_device_select);
+	//struct  sockaddr_in *addr = reinterpret_cast<sockaddr_in *>(this->_device_select);
 
-	if (!addr)
-		return 1;
-	in_addr_t ipv4 = addr->sin_addr.s_addr;
+	//if (!addr)
+	//	return 1;
+	//in_addr_t ipv4 = addr->sin_addr.s_addr;
 	if (!this->_fp)
 		this->_fp = new struct bpf_program;
 	if (!this->_fp)
 		return 1;
-	return pcap_compile(src, this->_fp, "arp or port ftp", 0, ipv4);
+	return pcap_compile(src, this->_fp, "arp or port ftp", 0, this->_netmask);
 }
 
 int	Pcap::setFilter(pcap_t *src, struct bpf_program *fp) const {
@@ -256,7 +270,7 @@ static void handle_arp(const u_char *bytes, bpf_u_int32 len) {
 				std::cout << ".";
 		}
 		std::cout.copyfmt(old_cout);
-		std::cout << std::endl;
+		std::cout << std::endl << std::endl;
 	}
 }
 
@@ -270,26 +284,26 @@ static void handle_ftp(const u_char *bytes, bpf_u_int32 len){
 	if (!bytes)
 		return ;
 	bpf_u_int32 size = ETH_HLEN;
-	const struct iphdr *ip = reinterpret_cast<const struct iphdr *>(bytes + size);
+	const struct iphdr *ip
+		= reinterpret_cast<const struct iphdr *>(bytes + size);
 	size += (ip->ihl * 4);
-	const struct tcphdr *tcp = reinterpret_cast<const struct tcphdr *>(bytes + size);
+	const struct tcphdr *tcp
+		= reinterpret_cast<const struct tcphdr *>(bytes + size);
 	size += (tcp->doff * 4);
-	const u_char *ftp_bytes = (const u_char *)(bytes + size);
-	std::string fill_cmp;
+	const unsigned char *ftp_bytes
+		= reinterpret_cast<const unsigned char *>(bytes + size);
+	std::string fill_cmp((const char *)ftp_bytes);
 
 	if (ftp_bytes) {
 		len -= size;
-		/*for (bpf_u_int32 i = 0; i < len; i++) {
-			std::cout << ftp_bytes[i];
-			fill_cmp.push_back(ftp_bytes[i]);
-		}*/
-		if (!fill_cmp.find_first_of("STOR") || !fill_cmp.find_first_of("RETR")) {
+		if (!fill_cmp.find("STOR")
+			|| !fill_cmp.find("RETR")) {
 			fill_cmp.replace(0, 4, "");
-			std::cout<<"FTP name is:" << fill_cmp << std::endl;
+			std::cout << "FTP name is:" << fill_cmp \
+				<< std::endl;
 		}
-		fill_cmp.clear();
-		std::cout << std::endl;
 	}
+	fill_cmp.clear();
 }
 
 /*
@@ -304,32 +318,22 @@ static void handle_ftp(const u_char *bytes, bpf_u_int32 len){
  */
 static void handler(u_char *user, const struct pcap_pkthdr *h,
 	    const u_char *bytes) {
-//	std::cout << std::hex << "*user:" << *user << std::endl;
-//	std::cout << std::hex << "*bytes:" << *bytes << std::endl;
-	for (bpf_u_int32 i = 0; i < h->len; i++) {
-		//std::cout << std::hex << bytes[i] << std::endl;
-		printf("%x ", bytes[i]);
-	}
-	printf("\n");
 	const struct ether_header *eth = (const struct ether_header *)bytes;
-	std::ofstream old_cout;
-	old_cout.copyfmt(std::cout);
-	std::cout << std::hex << ntohs(eth->ether_type) << std::endl;
-	std::cout.copyfmt(old_cout);
+
 	if (eth && ntohs(eth->ether_type) == ETHERTYPE_ARP) { // ARP
 		handle_arp(bytes, h->len);
 	} else if (eth && ntohs(eth->ether_type) == ETHERTYPE_IP) { // FTP
-		//get ftp file name
-		//sizeof(*eth) + sizeof(iphdr) + sizeof(tcp)
 		handle_ftp(bytes, h->len);
 	}
-	printf("\n");
 }
 
 int	Pcap::loopPcap(pcap_t *src, u_char *user) {
 	//init arp table
 	//comment je vais gérer enregistrer ça?
+	char errbuf[PCAP_ERRBUF_SIZE] = {0};
 	int res = pcap_loop(src, INFINITE, handler, user);
+	
+	printf("res:%d\n", res);
 	//restore arp table
 	return res;
 }

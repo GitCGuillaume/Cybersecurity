@@ -35,12 +35,12 @@ poison:
 	  		poison); \
 	docker compose -f docker/docker-compose.yml \
 		exec -d poison arpspoof -i eth0 -t ftp "$${GATEWAY}"
-	docker compose -f docker/docker-compose.yml \
-		exec -d poison arpspoof -i eth0 -t "$${GATEWAY}" ftp
-	docker compose -f docker/docker-compose.yml \
-		exec -d poison arpspoof -i eth0 -t ftp fl
-	docker compose -f docker/docker-compose.yml \
-		exec -d poison arpspoof -i eth0 -t fl ftp
+	#docker compose -f docker/docker-compose.yml \
+	#	exec -d poison arpspoof -i eth0 -t "$${GATEWAY}" ftp
+	#docker compose -f docker/docker-compose.yml \
+	#	exec -d poison arpspoof -i eth0 -t ftp fl
+	#docker compose -f docker/docker-compose.yml \
+	#	exec -d poison arpspoof -i eth0 -t fl ftp
 
 test:
 	#install
