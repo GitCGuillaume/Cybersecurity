@@ -28,7 +28,7 @@ static u_char g_free_arp = 0;
 /*
  * Mandatory global
  */
-static pcap_t	*g_pcap = NULL;
+pcap_t *g_pcap = NULL;
 
 void	signal_handler(int sig) {
 	if (sig == SIGINT) {
@@ -40,18 +40,32 @@ void	signal_handler(int sig) {
 	}
 }
 
+/*
+ * Forge packet
+ * Send packet into signal if no heap allocations
+ * otherwise use thread
+ * infect
+ */
+int start_poison(Pcap &c_pcap) {
+	char buf[sizeof(struct ether_header) + sizeof(ether_arp)] = {0};
+
+	c_pcap.forgePacket(buf, sizeof(buf));
+	printf("res:%d\n", pcap_sendpacket(c_pcap.GetDeviceCapture(), (const u_char *)buf, sizeof(buf)));
+	return 0;
+}
+
 int loop_filter(Pcap &c_pcap) {
-	std::signal(SIGINT, signal_handler);
 	pcap_t *device = c_pcap.GetDeviceCapture();
 	if (!device)
 		return 1;
 	g_pcap = device;
-	c_pcap.loopPcap(device, &g_free_arp);
+	std::signal(SIGINT, signal_handler);
+	start_poison(c_pcap);
+	return c_pcap.loopPcap(device);
 	//loop {
 	//
 	//}
 	//if g_free_arp == 1 > free arp after pcap_breakloop;
-	return 0;
 }
 
 int start_capture(Pcap &c_pcap) {
@@ -160,5 +174,7 @@ int main(int argc, char *argv[]) {
 		std::cout << "[3] [4]" << std::endl;
 		return start_capture(c_pcap_2);
 	}*/
-	return start_capture(c_pcap);
+	res = start_capture(c_pcap);
+	//restore arp
+	return res;
 }

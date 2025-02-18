@@ -21,11 +21,12 @@ Pcap::Pcap(const char *ip_src, const char *mac_src,
 Pcap::~Pcap() {
 	//if (this->_pcap_list)
 	//	pcap_freealldevs(this->_pcap_list);
-	if (this->_device_capture)
+	if (this->_device_capture) {
 		pcap_close(this->_device_capture);
+		g_pcap = NULL;
+	}
 	if (this->_fp) {
-		if (this->_fp->bf_insns)
-			pcap_freecode(this->_fp);
+		pcap_freecode(this->_fp);
 		delete this->_fp;
 	}
 	std::cout << "Destroyed" <<std::endl;
@@ -204,7 +205,7 @@ int	Pcap::setTimeout(pcap_t *src, int to_ms) const {
 int	Pcap::activateCapture(pcap_t *src) const {
 	return pcap_activate(this->_device_capture);
 }
-
+#include <cstring>
 int	Pcap::compileFilterArp(pcap_t *src)
 {
 	if (!src)// || !this->_device_select)
@@ -218,6 +219,7 @@ int	Pcap::compileFilterArp(pcap_t *src)
 		this->_fp = new struct bpf_program;
 	if (!this->_fp)
 		return 1;
+	memset(this->_fp, 0, sizeof(struct bpf_program));
 	return pcap_compile(src, this->_fp, "arp or port ftp", 0, this->_netmask);
 }
 
@@ -327,13 +329,61 @@ static void handler(u_char *user, const struct pcap_pkthdr *h,
 	}
 }
 
-int	Pcap::loopPcap(pcap_t *src, u_char *user) {
-	//init arp table
-	//comment je vais gérer enregistrer ça?
+int	Pcap::loopPcap(pcap_t *src) {
 	char errbuf[PCAP_ERRBUF_SIZE] = {0};
-	int res = pcap_loop(src, INFINITE, handler, user);
+	int res = pcap_loop(src, INFINITE, handler, NULL);
 	
 	printf("res:%d\n", res);
-	//restore arp table
 	return res;
+}
+
+/*
+ * Fill pointer address from std::string
+ */
+void convAddress(const std::string &src, uint8_t *addr,
+	const char c, const unsigned int len, const int base) {
+	if (!addr)
+		return ;
+	size_t pos = 0;
+	size_t old_pos = 0;
+	int i = 0;
+
+	pos = src.find(c, pos);
+	while (pos != std::string::npos && i < len) {
+		std::string substr = src.substr(old_pos, pos - old_pos);
+		old_pos = ++pos;
+		pos = src.find(c, old_pos);
+		addr[i] = std::stoi(substr, NULL, base);
+		i++;
+	}
+	std::string substr = src.substr(old_pos, pos - old_pos);
+	addr[i] = std::stoi(substr, NULL, base);
+}
+
+/*
+ * Forge Ethernet and ARP packet
+ */
+void	Pcap::forgePacket(char *buf, int len) {
+	if (!buf)
+		return ;
+	struct ether_header eth;
+	struct	ether_arp arp;
+
+	memset(&eth, 0, sizeof(struct ether_header));
+	memset(&arp, 0, sizeof(struct ether_arp));
+	convAddress(this->_mac_target, eth.ether_dhost, ':', ETH_HLEN, 16);
+	convAddress(this->_mac_src, eth.ether_shost, ':', ETH_HLEN, 16);
+	eth.ether_type = htons(0x0806);
+	arp.ea_hdr.ar_hrd = htons(1);
+	arp.ea_hdr.ar_pro = htons(0x0800);
+	arp.ea_hdr.ar_hln = ETH_ALEN;
+	arp.ea_hdr.ar_pln = 4;
+	arp.ea_hdr.ar_op = htons(ARPOP_REPLY);
+	convAddress(this->_mac_target, arp.arp_tha, ':', ETH_ALEN, 16);
+	convAddress(this->_ip_target, arp.arp_tpa, '.', 4, 10);
+	convAddress(this->_mac_src, arp.arp_sha, ':', ETH_ALEN, 16);
+	convAddress(this->_ip_src, arp.arp_spa, '.', 4, 10);
+	memcpy(buf, &eth, sizeof(struct ether_header));
+	memcpy(buf + ETH_HLEN, &arp, sizeof(struct ether_arp));
+
 }

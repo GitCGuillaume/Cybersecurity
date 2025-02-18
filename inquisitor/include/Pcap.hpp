@@ -54,7 +54,8 @@ class Pcap {
 		int	activateCapture(pcap_t *src) const;
 		int	compileFilterArp(pcap_t *src);
 		int	setFilter(pcap_t *src, struct bpf_program *fp) const;
-		int	loopPcap(pcap_t *src, u_char *user);
+		int	loopPcap(pcap_t *src);
+		void	forgePacket(char *buf, int len);
 		//init arp
 		//clear arp
 };
