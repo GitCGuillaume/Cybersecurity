@@ -4,3 +4,4 @@ tests/Catch2
 tests/files/build
 src/a.out
 a.out
+docker/poison/inquisitor

@@ -28,15 +28,21 @@ static u_char g_free_arp = 0;
 /*
  * Mandatory global
  */
-pcap_t *g_pcap = NULL;
+static Pcap *g_pcap = NULL;
+pcap_t *g_pcap_t = NULL;
 
 void	signal_handler(int sig) {
 	if (sig == SIGINT) {
-		std::cout<<"signal"<<std::endl;
 		g_free_arp = 1;
-		if (g_pcap) {
-			pcap_breakloop(g_pcap);
+		if (g_pcap_t) {
+			pcap_breakloop(g_pcap_t);
 		}
+	}
+}
+
+void	timer_handler(int sig) {
+	if (sig == SIGALRM && g_pcap) {
+		printf("s: %d\n", g_pcap->sendPacket());
 	}
 }
 
@@ -47,10 +53,31 @@ void	signal_handler(int sig) {
  * infect
  */
 int start_poison(Pcap &c_pcap) {
-	char buf[sizeof(struct ether_header) + sizeof(ether_arp)] = {0};
+	//char buf[sizeof(struct ether_header) + sizeof(ether_arp)] = {0};
+	int res = c_pcap.setSelfMac();
 
-	c_pcap.forgePacket(buf, sizeof(buf));
-	printf("res:%d\n", pcap_sendpacket(c_pcap.GetDeviceCapture(), (const u_char *)buf, sizeof(buf)));
+	printf("ret: %d\n", res);
+	if (res) {
+		if (res == PCAP_ERROR)
+			std::cerr << "No device found" << std::endl;
+		printf("ret: %d", res);
+		std::cout << "res error << std::endl;" << std::endl;
+		return 1;
+	}
+	c_pcap.forgePacket(false);
+	struct timeval time = {
+		.tv_sec = 1,
+		.tv_usec = 0
+	};
+	const struct itimerval timer = {
+		.it_interval = time,
+		.it_value = time
+	};
+
+		//printf("res:%d\n", pcap_sendpacket(c_pcap.GetDeviceCapture(), (const u_char *)buf, sizeof(buf)));
+	g_pcap = &c_pcap;
+	printf("ret timer: %d\n", setitimer(ITIMER_REAL, &timer, NULL));
+	std::signal(SIGALRM, timer_handler);
 	return 0;
 }
 
@@ -58,7 +85,7 @@ int loop_filter(Pcap &c_pcap) {
 	pcap_t *device = c_pcap.GetDeviceCapture();
 	if (!device)
 		return 1;
-	g_pcap = device;
+	g_pcap_t = device;
 	std::signal(SIGINT, signal_handler);
 	start_poison(c_pcap);
 	return c_pcap.loopPcap(device);
@@ -175,6 +202,20 @@ int main(int argc, char *argv[]) {
 		return start_capture(c_pcap_2);
 	}*/
 	res = start_capture(c_pcap);
+	if (g_free_arp == 1) {
+		alarm(0);
+		std::signal(SIGALRM, SIG_DFL);
+		c_pcap.forgePacket(true);
+		std::cout << "Send 4x original ARP to target...";
+		printf("s: %d\n", c_pcap.sendPacket());
+		sleep(1);
+		printf("s: %d\n", c_pcap.sendPacket());
+		sleep(1);
+		printf("s: %d\n", c_pcap.sendPacket());
+		sleep(1);
+		printf("s: %d\n", c_pcap.sendPacket());
+	}
+	std::cout << "END"<<std::endl;
 	//restore arp
 	return res;
 }

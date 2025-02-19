@@ -5,7 +5,7 @@ EXPOSE 20 21
 RUN apt-get update -y && apt-get upgrade -y
 #RUN apt-get install dialog -y && apt-get install libterm-readkey-perl -y
 RUN apt-get install -y --no-install-recommends vsftpd
-RUN apt-get install -y net-tools iputils-ping
+RUN apt-get install -y net-tools iputils-ping tcpdump
 RUN adduser gchopin -gecos GECOS --disabled-password
 COPY run.sh /usr/bin
 RUN chmod 550 /usr/bin/run.sh && mkdir -p /var/run/vsftpd/empty && touch /var/log/vsftpd.log && mkdir -p /var/log/vsftpd

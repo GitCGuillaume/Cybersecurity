@@ -8,8 +8,9 @@ services:
       - 21:21
     environment:
       - USR_PSW=$FTP_PSW
-        #networks:
-        #- inquisitor_net
+    networks:
+      - inquisitor_net
+
 
   filezilla:
     container_name: fl
@@ -19,19 +20,24 @@ services:
       - 3001
     security_opt:
       - seccomp:unconfined
+    networks:
+      - inquisitor_net
 
   poison:
     container_name: poison
     build: poison
-      #networks:
-      #- inquisitor_net
+    networks:
+      - inquisitor_net
 
   client:
     container_name: client
     build: client
-      #networks:
-      #- inquisitor_net
+    networks:
+      - inquisitor_net
   
-      #tcpdump:
+        #tcpdump:
       #container_name: tcpdump
      #build: tcpdump
+
+networks:
+  inquisitor_net:

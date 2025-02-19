@@ -19,7 +19,11 @@
 #include <cstdlib>
 #include <pcap/pcap.h>
 #include <iostream>
+#include <cstring>
 #include "ft_macros.hpp"
+
+#define BUFFER_SIZE \
+	sizeof(struct ether_header) + sizeof(struct ether_arp)
 
 class Pcap {
 	private:
@@ -28,13 +32,17 @@ class Pcap {
 		const std::string _ip_target;
 		const std::string _mac_target;
 		const std::string _interface;
-		std::string *_ip_select;
-		std::string *_mac_select;
-		//pcap_if_t *_pcap_list;
+		//std::string	_self_mac;
+		//std::string *_ip_select;
+		//std::string *_mac_select;
 		//pcap_if_t *_device_select;
+		pcap_if_t *_pcap_list;
 		pcap_t	*_device_capture;
 		struct bpf_program *_fp;
 		bpf_u_int32	_netmask;
+		char _buf[BUFFER_SIZE];
+		unsigned char  _sll_halen;
+		unsigned char  *_sll_addr;
 		//arp
 
 		Pcap();
@@ -51,11 +59,14 @@ class Pcap {
 		//bool	SetPcapList(void);
 		void	SetDeviceCapture(const std::string &interface);
 		int	setTimeout(pcap_t *src, int to_ms) const;
+		int	setSelfMac();
 		int	activateCapture(pcap_t *src) const;
 		int	compileFilterArp(pcap_t *src);
 		int	setFilter(pcap_t *src, struct bpf_program *fp) const;
 		int	loopPcap(pcap_t *src);
-		void	forgePacket(char *buf, int len);
+		int	sendPacket() const;
+		void	forgePacket(bool restore);
+		
 		//init arp
 		//clear arp
 };
