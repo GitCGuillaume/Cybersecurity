@@ -4,6 +4,6 @@
 #define INFINITE 0
 #define FT_IPV4_LEN 4
 
-extern pcap_t	*g_pcap_t;
+//extern pcap_t	*g_pcap_t;
 
 #endif

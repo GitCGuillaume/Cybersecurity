@@ -40,6 +40,7 @@ class Pcap {
 		pcap_t	*_device_capture;
 		struct bpf_program *_fp;
 		bpf_u_int32	_netmask;
+		bpf_u_int32	_network;
 		char _buf[BUFFER_SIZE];
 		unsigned char  _sll_halen;
 		unsigned char  *_sll_addr;
@@ -65,7 +66,8 @@ class Pcap {
 		int	setFilter(pcap_t *src, struct bpf_program *fp) const;
 		int	loopPcap(pcap_t *src);
 		int	sendPacket() const;
-		void	forgePacket(bool restore);
+		void	forgePacketRequest(bool restore);
+		void	forgePacketReply(bool restore);
 		
 		//init arp
 		//clear arp

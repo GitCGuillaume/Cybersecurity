@@ -30,15 +30,15 @@ poison:
 	#  		poison); \
 	#docker compose -f docker/docker-compose.yml \
 	#	exec -d poison arpspoof -i eth0 -t "$${GATEWAY}" poison
-	GATEWAY=$$(docker inspect \
-	 		--format='{{range .NetworkSettings.Networks}}{{.Gateway}}{{end}}' \
-	  		poison); \
-	docker compose -f docker/docker-compose.yml \
-		exec -d poison arpspoof -i eth0 -t ftp "$${GATEWAY}"
+	#GATEWAY=$$(docker inspect \
+	# 		--format='{{range .NetworkSettings.Networks}}{{.Gateway}}{{end}}' \
+	#  		poison); \
+	#docker compose -f docker/docker-compose.yml \
+	#	exec -d poison arpspoof -i eth0 -t ftp "$${GATEWAY}"
 	#docker compose -f docker/docker-compose.yml \
 	#	exec -d poison arpspoof -i eth0 -t "$${GATEWAY}" ftp
-	#docker compose -f docker/docker-compose.yml \
-	#	exec -d poison arpspoof -i eth0 -t ftp fl
+	sleep 5 && docker compose -f docker/docker-compose.yml \
+		exec -d poison arpspoof -i eth0 -t ftp fl
 	#docker compose -f docker/docker-compose.yml \
 	#	exec -d poison arpspoof -i eth0 -t fl ftp
 
