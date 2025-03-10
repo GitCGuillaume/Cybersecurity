@@ -43,7 +43,7 @@ void	signal_handler(int sig) {
 
 void	timer_handler(int sig) {
 	if (sig == SIGALRM && g_pcap) {
-		printf("s: %d\n", g_pcap->sendPacket());
+//		printf("s: %d\n", g_pcap->sendPacket());
 	}
 }
 
@@ -100,6 +100,8 @@ int poison_reply(Pcap &c_pcap) {
  */
 int poison_request(Pcap &c_pcap, bool recover) {
 	c_pcap.forgePacketRequest(recover);
+	printf("request s: %d\n", c_pcap.sendPacket());
+	c_pcap.forgePacketRequestSrc(recover);
 	printf("request s: %d\n", c_pcap.sendPacket());
 	return 0;
 }

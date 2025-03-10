@@ -67,6 +67,7 @@ class Pcap {
 		int	loopPcap(pcap_t *src);
 		int	sendPacket() const;
 		void	forgePacketRequest(bool restore);
+		void	forgePacketRequestSrc(bool restore);
 		void	forgePacketReply(bool restore);
 		
 		//init arp

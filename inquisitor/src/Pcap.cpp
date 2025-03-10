@@ -467,6 +467,37 @@ void convAddress(const std::string &src, uint8_t *addr,
 }
 */
 
+void Pcap::forgePacketRequestSrc(bool restore) {
+	struct ether_header eth;
+	struct	ether_arp arp;
+
+	memset(this->_buf, 0, sizeof(this->_buf));
+	memset(&eth, 0, sizeof(struct ether_header));
+	memset(&arp, 0, sizeof(struct ether_arp));
+	//broadcast
+	memset(&eth.ether_dhost, 255, sizeof(eth.ether_dhost));
+	for (int i = 0; i < ETH_HLEN && i < this->_sll_halen; i++) {
+		eth.ether_shost[i] = this->_sll_addr[i];
+	}
+	eth.ether_type = htons(0x0806);
+	arp.ea_hdr.ar_hrd = htons(1);
+	arp.ea_hdr.ar_pro = htons(0x0800);
+	arp.ea_hdr.ar_hln = ETH_ALEN;
+	arp.ea_hdr.ar_pln = 4;
+	arp.ea_hdr.ar_op = htons(ARPOP_REQUEST);
+	for (int i = 0; i < ETH_HLEN && i < this->_sll_halen; i++) {
+		arp.arp_sha[i] = this->_sll_addr[i];
+	}
+	memcpy(&arp.arp_spa, &this->_network, sizeof(this->_network));
+	if (restore) {
+		convAddress(this->_ip_target, arp.arp_tpa, '.', 4, 10);
+	} else {
+		convAddress(this->_ip_src, arp.arp_tpa, '.', 4, 10);
+	}
+	memcpy(this->_buf, &eth, sizeof(struct ether_header));
+	memcpy(this->_buf + ETH_HLEN, &arp, sizeof(struct ether_arp));
+}
+
 void Pcap::forgePacketRequest(bool restore) {
 	struct ether_header eth;
 	struct	ether_arp arp;
@@ -497,6 +528,37 @@ void Pcap::forgePacketRequest(bool restore) {
 	memcpy(this->_buf, &eth, sizeof(struct ether_header));
 	memcpy(this->_buf + ETH_HLEN, &arp, sizeof(struct ether_arp));
 }
+/*
+void Pcap::forgePacketReplySrc(bool restore) {
+	struct ether_header eth;
+	struct	ether_arp arp;
+
+	memset(this->_buf, 0, sizeof(this->_buf));
+	memset(&eth, 0, sizeof(struct ether_header));
+	memset(&arp, 0, sizeof(struct ether_arp));
+	convAddress(this->_mac_src, eth.ether_dhost, ':', ETH_HLEN, 16);
+	for (int i = 0; i < ETH_HLEN && i < this->_sll_halen; i++) {
+		eth.ether_shost[i] = this->_sll_addr[i];
+	}
+	eth.ether_type = htons(0x0806);
+	arp.ea_hdr.ar_hrd = htons(1);
+	arp.ea_hdr.ar_pro = htons(0x0800);
+	arp.ea_hdr.ar_hln = ETH_ALEN;
+	arp.ea_hdr.ar_pln = 4;
+	arp.ea_hdr.ar_op = htons(ARPOP_REPLY);
+	if (restore) {
+		convAddress(this->_mac_src, arp.arp_sha, ':', ETH_ALEN, 16);
+	} else {
+		for (int i = 0; i < ETH_HLEN && i < this->_sll_halen; i++) {
+			arp.arp_sha[i] = this->_sll_addr[i];
+		}
+	}
+	convAddress(this->_ip_src, arp.arp_spa, '.', 4, 10);
+	convAddress(this->_mac_target, arp.arp_tha, ':', ETH_ALEN, 16);
+	convAddress(this->_ip_target, arp.arp_tpa, '.', 4, 10);
+	memcpy(this->_buf, &eth, sizeof(struct ether_header));
+	memcpy(this->_buf + ETH_HLEN, &arp, sizeof(struct ether_arp));
+}*/
 
 void Pcap::forgePacketReply(bool restore) {
 	struct ether_header eth;
