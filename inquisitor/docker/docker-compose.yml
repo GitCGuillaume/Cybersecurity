@@ -14,7 +14,7 @@ services:
 
   filezilla:
     container_name: fl
-    image: linuxserver/filezilla
+    image: linuxserver/filezilla:3.68.1-r0-ls183
     ports:
       - 3000
       - 3001

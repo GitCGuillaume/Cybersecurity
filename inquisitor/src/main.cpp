@@ -90,7 +90,7 @@ int poison_reply(Pcap &c_pcap) {
 	std::signal(SIGALRM, timer_handler);
 	g_pcap_t = device;
 	g_pcap = &c_pcap;
-	c_pcap.forgePacketReply(false);
+	//c_pcap.forgePacketReply(false);
 	printf("ret timer: %d\n", setitimer(ITIMER_REAL, &timer, NULL));
 	return 0;
 }
@@ -124,10 +124,11 @@ int loop_filter(Pcap &c_pcap) {
 	}
 	std::cout<<"request act"<<std::endl;
 	poison_request(c_pcap, false);
-	std::signal(SIGINT, signal_handler);
-	poison_reply(c_pcap);
+	//poison_reply(c_pcap);
 	std::cout<<"reply act"<<std::endl;
 	//start_poison(c_pcap);
+	g_pcap_t = device;
+	std::signal(SIGINT, signal_handler);
 	return c_pcap.loopPcap(device);
 	//loop {
 	//
@@ -245,12 +246,12 @@ int main(int argc, char *argv[]) {
 	res = start_capture(c_pcap);
 	std::cout << "RESS:" << res << std::endl;
 	if (g_free_arp == 1) {
-		alarm(0);
-		std::signal(SIGALRM, SIG_DFL);
+	//	alarm(0);
+		//std::signal(SIGALRM, SIG_DFL);
 		/* inverser target sur src  */
 		poison_request(c_pcap, true);
-		c_pcap.forgePacketReply(true);
-		std::cout << "Send 4x original ARP to target...";
+		//c_pcap.forgePacketReply(true);
+		/*std::cout << "Send 4x original ARP to target...";
 		printf("s: %d\n", c_pcap.sendPacket());
 		sleep(1);
 		printf("s: %d\n", c_pcap.sendPacket());
@@ -260,6 +261,7 @@ int main(int argc, char *argv[]) {
 		printf("s: %d\n", c_pcap.sendPacket());
 		sleep(1);
 		printf("s: %d\n", c_pcap.sendPacket());
+	*/
 	}
 	std::cout << "END"<<std::endl;
 	//restore arp

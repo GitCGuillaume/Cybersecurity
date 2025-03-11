@@ -1,5 +1,8 @@
 #include <Pcap.hpp>
 
+pcap_t *g_device = NULL;
+std::string g_ip_src;
+
 Pcap::Pcap(const char *ip_src, const char *mac_src,
 	  const char *ip_target, const char *mac_target,
 	  std::string &interface) : _ip_src(ip_src), _mac_src(mac_src),
@@ -285,8 +288,107 @@ int	Pcap::setFilter(pcap_t *src, struct bpf_program *fp) const {
 	return pcap_setfilter(src, fp);
 }
 #include <fstream>
-//
+
+/*
+ * Fill pointer address from std::string
+ */
+static void convAddress(const std::string &src, uint8_t *addr,
+	const char c, const unsigned int len, const int base) {
+	if (!addr)
+		return ;
+	size_t pos = 0;
+	size_t old_pos = 0;
+	int i = 0;
+
+	pos = src.find(c, pos);
+	while (pos != std::string::npos && i < len) {
+		std::string substr = src.substr(old_pos, pos - old_pos);
+		old_pos = ++pos;
+		pos = src.find(c, old_pos);
+		addr[i] = std::stoi(substr, NULL, base);
+		i++;
+	}
+	std::string substr = src.substr(old_pos, pos - old_pos);
+	addr[i] = std::stoi(substr, NULL, base);
+}
+
+static void forge_packet_reply(const u_char *bytes, bpf_u_int32 len,
+	unsigned char *buf, unsigned int len_buf) {
+	const struct ether_header *eth = reinterpret_cast<const struct ether_header *>(bytes);
+	const struct ether_arp *arp= reinterpret_cast<const struct ether_arp *>(bytes + ETH_HLEN);
+	struct ether_header eth_cpy;
+	struct ether_arp arp_cpy;
+
+	memset(&eth_cpy, 0, sizeof(struct ether_header));
+	memset(&arp_cpy, 0, sizeof(struct ether_arp));
+	for (int i = 0; i < ETH_ALEN; i++) {
+		eth_cpy.ether_dhost[i] = eth->ether_shost[i];
+	}
+	for (int i = 0; i < ETH_ALEN; i++) {
+		eth_cpy.ether_shost[i] = eth->ether_dhost[i];
+	}
+	eth_cpy.ether_type = htons(0x0806);
+	arp_cpy.ea_hdr.ar_hrd = htons(1);
+	arp_cpy.ea_hdr.ar_pro = htons(0x0800);
+	arp_cpy.ea_hdr.ar_hln = ETH_ALEN;
+	arp_cpy.ea_hdr.ar_pln = 4;
+	arp_cpy.ea_hdr.ar_op = htons(ARPOP_REPLY);
+	for (int i = 0; i < ETH_ALEN; i++) {
+		arp_cpy.arp_sha[i] = arp->arp_tha[i];
+	}
+	convAddress(g_ip_src, arp_cpy.arp_spa, '.', 4, 10);
+	for (int i = 0; i < ETH_ALEN; i++) {
+		arp_cpy.arp_tha[i] = arp->arp_sha[i];
+	}
+	for (int i = 0; i < 4; i++) {
+		arp_cpy.arp_tpa[i] = arp->arp_spa[i];
+	}
+	//eth->ether_type = htons(0x0806);
+	/*convAddress(this->_mac_target, eth.ether_dhost, ':', ETH_HLEN, 16);
+	for (int i = 0; i < ETH_HLEN && i < this->_sll_halen; i++) {
+		eth.ether_shost[i] = this->_sll_addr[i];
+	}
+	eth.ether_type = htons(0x0806);
+	arp.ea_hdr.ar_hrd = htons(1);
+	arp.ea_hdr.ar_pro = htons(0x0800);
+	arp.ea_hdr.ar_hln = ETH_ALEN;
+	arp.ea_hdr.ar_pln = 4;
+	arp.ea_hdr.ar_op = htons(ARPOP_REPLY);
+	if (restore) {
+		convAddress(this->_mac_src, arp.arp_sha, ':', ETH_ALEN, 16);
+	} else {
+		for (int i = 0; i < ETH_HLEN && i < this->_sll_halen; i++) {
+			arp.arp_sha[i] = this->_sll_addr[i];
+		}
+	}
+	convAddress(this->_ip_src, arp.arp_spa, '.', 4, 10);
+	convAddress(this->_mac_target, arp.arp_tha, ':', ETH_ALEN, 16);
+	convAddress(this->_ip_target, arp.arp_tpa, '.', 4, 10);
+	*/
+	memcpy(buf, &eth_cpy, sizeof(struct ether_header));
+	memcpy(buf + ETH_HLEN, &arp_cpy, sizeof(struct ether_arp));
+}
+#include <unistd.h>
+static int	send_packet(unsigned char *buf, unsigned int len) {
+	if (!g_device)
+		return -1;
+	std::cout << "SEND PACKET" << std::endl;
+	printf("g:%p\n", g_device);
+	return pcap_sendpacket(g_device,
+		(const u_char *)buf, len);
+}
+
 static void handle_arp(const u_char *bytes, bpf_u_int32 len) {
+	unsigned char buf[BUFFER_SIZE] = { 0 };
+
+	forge_packet_reply(bytes, len, buf, BUFFER_SIZE);
+	int res = send_packet(buf, sizeof(buf)); // if err display error
+
+	if (res == PCAP_ERROR_ACTIVATED
+		|| res == PCAP_ERROR)
+		pcap_perror(g_device, "Error send packet: ");
+	else if (res == -1)
+		std::cerr << "No device found, can't reply." << std::endl;
 	std::ofstream old_cout;
 	const struct ether_arp *arp= reinterpret_cast<const struct ether_arp *>(bytes + ETH_HLEN);
 
@@ -390,6 +492,13 @@ static void handler(u_char *user, const struct pcap_pkthdr *h,
 
 int	Pcap::loopPcap(pcap_t *src) {
 	char errbuf[PCAP_ERRBUF_SIZE] = {0};
+
+	if (!src)
+		return -1;
+	printf("src:%p\n", src);
+	g_device = src;
+	printf("src:%p\n", src);
+	g_ip_src = this->_ip_src;
 	int res = pcap_loop(src, INFINITE, handler, NULL);
 	
 	printf("res:%d\n", res);
@@ -401,28 +510,6 @@ int	Pcap::sendPacket() const {
 		(const u_char *)this->_buf, sizeof(this->_buf));
 }
 
-/*
- * Fill pointer address from std::string
- */
-void convAddress(const std::string &src, uint8_t *addr,
-	const char c, const unsigned int len, const int base) {
-	if (!addr)
-		return ;
-	size_t pos = 0;
-	size_t old_pos = 0;
-	int i = 0;
-
-	pos = src.find(c, pos);
-	while (pos != std::string::npos && i < len) {
-		std::string substr = src.substr(old_pos, pos - old_pos);
-		old_pos = ++pos;
-		pos = src.find(c, old_pos);
-		addr[i] = std::stoi(substr, NULL, base);
-		i++;
-	}
-	std::string substr = src.substr(old_pos, pos - old_pos);
-	addr[i] = std::stoi(substr, NULL, base);
-}
 
 /*void	Pcap::forgePacketRequest(bool restore) {
 	struct ether_header eth;
@@ -560,7 +647,7 @@ void Pcap::forgePacketReplySrc(bool restore) {
 	memcpy(this->_buf + ETH_HLEN, &arp, sizeof(struct ether_arp));
 }*/
 
-void Pcap::forgePacketReply(bool restore) {
+/*void Pcap::forgePacketReply(bool restore) {
 	struct ether_header eth;
 	struct	ether_arp arp;
 
@@ -589,7 +676,7 @@ void Pcap::forgePacketReply(bool restore) {
 	convAddress(this->_ip_target, arp.arp_tpa, '.', 4, 10);
 	memcpy(this->_buf, &eth, sizeof(struct ether_header));
 	memcpy(this->_buf + ETH_HLEN, &arp, sizeof(struct ether_arp));
-}
+}*/
 
 /*
  * Forge Ethernet and ARP packet

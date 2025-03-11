@@ -47,6 +47,7 @@ class Pcap {
 		//arp
 
 		Pcap();
+		void	forgePacketReply(const u_char *bytes, bpf_u_int32 len);
 
 	public:
 		Pcap(const char *ip_src, const char *mac_src,
@@ -68,7 +69,6 @@ class Pcap {
 		int	sendPacket() const;
 		void	forgePacketRequest(bool restore);
 		void	forgePacketRequestSrc(bool restore);
-		void	forgePacketReply(bool restore);
 		
 		//init arp
 		//clear arp
