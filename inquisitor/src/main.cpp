@@ -24,16 +24,23 @@
 /*
  * To free ARP table
  */
-static u_char g_free_arp = 0;
+u_char g_free_arp = 0;
 /*
  * Mandatory global
  */
 static Pcap *g_pcap = NULL;
 static pcap_t *g_pcap_t = NULL;
 
+/*
+ * 0 == normal capture
+ * 1 == retrieve capture
+ * 2 == breakloop
+ */
 void	signal_handler(int sig) {
+	printf("g_free_arp:%d\n", g_free_arp);
 	if (sig == SIGINT) {
-		g_free_arp = 1;
+		if (g_free_arp == 0)
+			g_free_arp = 1;
 		if (g_pcap_t) {
 			pcap_breakloop(g_pcap_t);
 		}
@@ -138,6 +145,7 @@ int loop_filter(Pcap &c_pcap) {
 
 int start_capture(Pcap &c_pcap) {
 	//pcap_if_t *device;
+	char errbuf[PCAP_ERRBUF_SIZE] = { 0 };
 	pcap_t	*device_capture = NULL;
 	int	error;
 	struct bpf_program *fp = NULL;
@@ -157,12 +165,21 @@ int start_capture(Pcap &c_pcap) {
 		}
 		error = c_pcap.setTimeout(device_capture, 100);
 		if (error == PCAP_ERROR_ACTIVATED) {
-			std::cerr << "Capture already activated" << std::endl;
+			std::cerr << "Capture already activated." << std::endl;
 			return 1;
 		}
 		error = c_pcap.activateCapture(device_capture);
 		if (error != 0) {
 			std::cerr << pcap_statustostr(error) << std::endl;
+			return 1;
+		}
+		/*error = c_pcap.setNonBlock(errbuf, 1);
+		if (error == PCAP_ERROR_NOT_ACTIVATED) {
+			std::cout << "Device is not yet captured." << std::endl;
+			return 1;
+		}*/
+		if (error == PCAP_ERROR) {
+			std::cout << errbuf << std::endl;;
 			return 1;
 		}
 		//filter ask activate before
@@ -245,11 +262,11 @@ int main(int argc, char *argv[]) {
 	}*/
 	res = start_capture(c_pcap);
 	std::cout << "RESS:" << res << std::endl;
-	if (g_free_arp == 1) {
+	//if (g_free_arp == 1) {
 	//	alarm(0);
 		//std::signal(SIGALRM, SIG_DFL);
 		/* inverser target sur src  */
-		poison_request(c_pcap, true);
+	//	poison_request(c_pcap, true);
 		//c_pcap.forgePacketReply(true);
 		/*std::cout << "Send 4x original ARP to target...";
 		printf("s: %d\n", c_pcap.sendPacket());
@@ -262,7 +279,7 @@ int main(int argc, char *argv[]) {
 		sleep(1);
 		printf("s: %d\n", c_pcap.sendPacket());
 	*/
-	}
+	//}
 	std::cout << "END"<<std::endl;
 	//restore arp
 	return res;

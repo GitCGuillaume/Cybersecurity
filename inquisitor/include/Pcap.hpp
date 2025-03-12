@@ -61,6 +61,7 @@ class Pcap {
 		//bool	SetPcapList(void);
 		void	SetDeviceCapture(const std::string &interface);
 		int	setTimeout(pcap_t *src, int to_ms) const;
+		int	setNonBlock(char *errbuf, int val);
 		int	setSelfMac();
 		int	activateCapture(pcap_t *src) const;
 		int	compileFilterArp(pcap_t *src);

