@@ -24,12 +24,12 @@
 /*
  * To free ARP table
  */
-u_char g_free_arp = 0;
+int g_free_arp = 0;
 /*
  * Mandatory global
  */
 static Pcap *g_pcap = NULL;
-static pcap_t *g_pcap_t = NULL;
+pcap_t *g_device = NULL;
 
 /*
  * 0 == normal capture
@@ -39,10 +39,11 @@ static pcap_t *g_pcap_t = NULL;
 void	signal_handler(int sig) {
 	printf("g_free_arp:%d\n", g_free_arp);
 	if (sig == SIGINT) {
-		if (g_free_arp == 0)
+		if (g_free_arp == 0) {
 			g_free_arp = 1;
-		if (g_pcap_t) {
-			pcap_breakloop(g_pcap_t);
+			if (g_device) {
+				pcap_breakloop(g_device);
+			}
 		}
 		std::cout << "STOP" << std::endl;
 	}
@@ -81,7 +82,7 @@ void	timer_handler(int sig) {
 /*
  * Source is at poison ether target ip
  */
-int poison_reply(Pcap &c_pcap) {
+/*int poison_reply(Pcap &c_pcap) {
 	struct timeval time = {
 		.tv_sec = 1,
 		.tv_usec = 0
@@ -101,7 +102,7 @@ int poison_reply(Pcap &c_pcap) {
 	printf("ret timer: %d\n", setitimer(ITIMER_REAL, &timer, NULL));
 	return 0;
 }
-
+*/
 /*
  * Who has target? tell poison
  */
@@ -134,7 +135,7 @@ int loop_filter(Pcap &c_pcap) {
 	//poison_reply(c_pcap);
 	std::cout<<"reply act"<<std::endl;
 	//start_poison(c_pcap);
-	g_pcap_t = device;
+	g_device = device;
 	std::signal(SIGINT, signal_handler);
 	return c_pcap.loopPcap(device);
 	//loop {

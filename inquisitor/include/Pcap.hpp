@@ -21,6 +21,8 @@
 #include <iostream>
 #include <cstring>
 #include "ft_macros.hpp"
+#include <thread>
+#include <atomic>
 
 #define BUFFER_SIZE \
 	sizeof(struct ether_header) + sizeof(struct ether_arp)

