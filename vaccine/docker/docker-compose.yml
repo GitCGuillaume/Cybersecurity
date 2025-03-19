@@ -1,0 +1,24 @@
+services:
+  mysql:
+    container_name: mysql
+    image: mysql:8.4.4
+    expose:
+      - "3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=$MYSQL_ROOT_PASSWORD
+
+  oracle:
+    container_name: oracle
+    image: gvenzl/oracle-free:23.5
+    expose:
+      - "1521"
+    environment:
+      - ORACLE_PASSWORD=$ORACLE_PASSWORD
+      - APP_USER=$APP_USER
+      - APP_USER_PASSWORD=$APP_USER_PASSWORD
+
+  nginx:
+    container_name: nginx
+    build: nginx
+    ports:
+      - 80:80

@@ -1,0 +1,21 @@
+server {
+	listen 80;
+	listen [::]:80;
+	server_name localhost;
+	root /var/www/site;
+	error_log /var/log/nginx/error.log;
+	index mysql.php;
+	location / {
+		#autoindex on; #directory listing
+		# First attempt to serve request as file, then
+		# as directory, then fall back to displaying a 404.
+		try_files $uri $uri/ =404;
+	}
+	location ~ [^/]\.php(/|$) {
+		try_files $uri $uri/ =404;
+		include fastcgi_params;
+		fastcgi_index mysql.php;
+		fastcgi_pass nginx:9000;
+		fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+	}
+}
