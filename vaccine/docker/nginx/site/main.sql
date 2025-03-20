@@ -1,0 +1,4 @@
+PRAGMA foreign_keys=OFF;
+BEGIN TRANSACTION;
+CREATE TABLE test (id int PRIMARY KEY, test TEXT);
+COMMIT;

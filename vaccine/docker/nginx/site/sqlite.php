@@ -1,7 +1,7 @@
 <?php
 	try {
-		$dtb = new PDO('mysql:host=mysql;dbname=information_schema', 'root', 'toor');
-		echo "Connected to database MySql";
+		$dtb = new PDO('sqlite:/var/www/site/main.db');
+		echo "Connected to database Sqlite";
 		var_dump($dtb);
 	}
 	catch (PDOException $err) {
@@ -12,7 +12,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-	<title>Mysql infection</title>
+	<title>Sqlite infection</title>
 </head
 <body>
 	<form action="post">
