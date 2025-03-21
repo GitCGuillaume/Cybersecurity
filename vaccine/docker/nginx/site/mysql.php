@@ -47,8 +47,8 @@ catch (PDOException $err) {
 		<input type="submit" />
 	</form>
 	<a href="./mysql.php">mysql.php</a>
-	<a href="./mysql.php?a=TABLESPACE">mysql.php?a=TABLESPACE</a>
+	<a href="./mysql.php?a=abc">mysql.php?a=abc</a>
 	<a href="./sqlite.php">sqlite.php</a>
-	<a href="./sqlite.php?a=TABLESPACE">sqlite.php?a=TABLESPACE</a>
+	<a href="./sqlite.php?a=abc">sqlite.php?a=abc</a>
 </body>
 </html>
