@@ -6,10 +6,10 @@ services:
       - "3306"
     environment:
       - MYSQL_ROOT_PASSWORD=$MYSQL_ROOT_PASSWORD
-      - MYSQL_USER=test
+      - MYSQL_USER=$MYSQL_USER
         MYSQL_PASSWORD=$MYSQL_PASSWORD
     volumes:
-      - "/home/guillaume/Documents/Cybersecurity/vaccine/docker/mysql:/docker-entrypoint-initdb.d"
+      - "/home/gchopin/Documents/Cybersecurity/vaccine/docker/mysql:/docker-entrypoint-initdb.d"
 
   nginx:
     container_name: nginx

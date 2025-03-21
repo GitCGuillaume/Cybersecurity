@@ -11,13 +11,15 @@ try {
 	$query_str = "SELECT * from list where vals = '$type'";
 	$res = $dtb->query($query_str);
 	echo '<pre>', var_dump($res->fetchAll()) , '</pre>';
+	$res->closeCursor();
 	if ($_POST['txt']) {
 		echo 'post_txt: ', $_POST['txt'];
 		$post = $_POST['txt'];
 		$insert = "INSERT INTO list(vals) VALUES ('$post')";
 		$res = $dtb->prepare($insert);
-		#$res2 = $res->execute();
+		$res2 = $res->execute();
 		echo 'res: <pre>', var_dump($res) , '</pre>';
+		$res->closeCursor();
 	}
 	if ($_POST['hid']) {
 		echo 'post_hid: ', $_POST['hid'];
@@ -25,6 +27,7 @@ try {
 	$query_str = "SELECT * from list";
 	$res = $dtb->query($query_str);
 	echo '<pre>', var_dump($res->fetchAll()) , '</pre>';
+	$res->closeCursor();
 	
 }
 catch (PDOException $err) {
