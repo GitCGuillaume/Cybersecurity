@@ -6,26 +6,13 @@ services:
       - "3306"
     environment:
       - MYSQL_ROOT_PASSWORD=$MYSQL_ROOT_PASSWORD
-
-        #oracle:
-        #container_name: oracle
-        #  image: gvenzl/oracle-free:23.5
-        # expose:
-        #  - "1521"
-        #   environment:
-        #  - ORACLE_PASSWORD=$ORACLE_PASSWORD
-        #    - APP_USER=$APP_USER
-        #   - APP_USER_PASSWORD=$APP_USER_PASSWORD
-        #sqlite:
-        #   container_name: sqlite
-        # image: alpine/sqlite
-      #command: sleep infinity
+      - MYSQL_USER=test
+        MYSQL_PASSWORD=$MYSQL_PASSWORD
+    volumes:
+      - "/home/guillaume/Documents/Cybersecurity/vaccine/docker/mysql:/docker-entrypoint-initdb.d"
 
   nginx:
     container_name: nginx
     build: nginx
     ports:
       - 80:80
-
-volumes:
-  sqlite_db:
