@@ -9,7 +9,7 @@ services:
       - MYSQL_USER=$MYSQL_USER
         MYSQL_PASSWORD=$MYSQL_PASSWORD
     volumes:
-      - "/home/gchopin/Documents/Cybersecurity/vaccine/docker/mysql:/docker-entrypoint-initdb.d"
+      - "/home/guillaume/Documents/Cybersecurity/vaccine/docker/mysql:/docker-entrypoint-initdb.d"
 
   nginx:
     container_name: nginx

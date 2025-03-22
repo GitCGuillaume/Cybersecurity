@@ -23,6 +23,12 @@ try {
 	}
 	if ($_POST['hid']) {
 		echo 'post_hid: ', $_POST['hid'];
+		$post = $_POST['hid'];
+		$insert = "INSERT INTO list(vals) VALUES ('$post')";
+		$res = $dtb->prepare($insert);
+		$res2 = $res->execute();
+		echo 'res: <pre>', var_dump($res) , '</pre>';
+		$res->closeCursor();
 	}
 	$query_str = "SELECT * from list";
 	$res = $dtb->query($query_str);
