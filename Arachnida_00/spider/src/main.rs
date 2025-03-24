@@ -12,7 +12,7 @@ fn launch_connection(is_recursive: bool, max_depth: &mut String,
         max_depth.push_str("1");
     }
     let max_depth: Result<i32, _> = max_depth.parse();
-
+    
     match max_depth {
         Ok(max) => {
              let rt: Result<Runtime, std::io::Error>  = Runtime::new();

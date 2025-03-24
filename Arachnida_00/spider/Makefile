@@ -1,5 +1,6 @@
 all:
 	cargo build --release
+	cp ./target/release/spider .
 
 leak:
 	RUSTFLAGS=-Zsanitizer=address \
@@ -12,6 +13,7 @@ clean:
 fclean:
 	cargo clean
 	rm -rf ./data
+	rm -f ./spider
 
 re:
 	fclean all
