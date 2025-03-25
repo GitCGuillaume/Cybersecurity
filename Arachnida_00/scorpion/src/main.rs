@@ -13,6 +13,7 @@ use file::{handle_file::{
 mod file;
 
 /*
+    To generate png exif: https://products.groupdocs.app/metadata/png
     Display jpg / png exif
     Display metadata for jpg/png/bmp/gif
 */

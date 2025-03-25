@@ -19,6 +19,10 @@ fn show_len(metadata: &Metadata) {
     println!("File length: {value} bytes");
 }
 
+/* 
+ * Show base 8 chmod like permission
+ * man 7 inode
+ */
 #[cfg(target_family = "unix")]
 fn show_permissions_unix(metadata: &Metadata) {
     let value: std::fs::Permissions = metadata.permissions();
