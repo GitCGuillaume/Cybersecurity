@@ -4,7 +4,11 @@ pub mod utils_exif;
 pub mod handle_file {
     use std::fs::File;
     use infer::Type;
+    use image;
 
+    /*
+     * Show type file
+     */
     pub fn show_content_type(path: &String) {
         let content_type: Result<Option<Type>, std::io::Error> = infer::get_from_path(path);
 
@@ -22,6 +26,19 @@ pub mod handle_file {
             Err(e) => {
                 eprintln!("Error: {e}");
             },
+        }
+    }
+
+    pub fn show_image_dimension(path: &String) {
+        let res_dimensions:Result<(u32, u32), image::ImageError>   = image::image_dimensions(path);
+
+        match res_dimensions {
+            Ok(dim) => {
+                println!("Width: {0} Height: {1}", dim.0, dim.1);
+            },
+            Err(err) => {
+                eprintln!("Error: {}", err);
+            }
         }
     }
 

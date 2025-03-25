@@ -2,6 +2,7 @@ use std::{ env, fs::File };
 use exif::Exif;
 use file::{handle_file::{
     show_content_type,
+    show_image_dimension,
     get_file,
     get_exif,
     get_metadata,
@@ -18,9 +19,9 @@ mod file;
 fn main() {
     let argv: Vec<String> = env::args().skip(1).collect();
 
-
     if argv.len() == 0 {
         eprintln!("Program need a path.");
+        return ;
     }
     for i in argv {
         let res_file: Result<File, std::io::Error> = get_file(&i);
@@ -28,6 +29,7 @@ fn main() {
         match res_file {
             Ok(file) => {
                 show_content_type(&i);
+                show_image_dimension(&i);
                 let res_metadata: Result<std::fs::Metadata, std::io::Error> = get_metadata(&file);
 
                 utils_metadata::show_metadata(&res_metadata);
