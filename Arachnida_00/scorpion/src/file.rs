@@ -9,6 +9,11 @@ pub mod handle_file {
         }
     };
     use image;
+    use std::io::BufReader;
+    use exif::{
+        Exif,
+        Error
+    };
 
     /*
      * Show type file from File
@@ -66,12 +71,12 @@ pub mod handle_file {
         meta
     }
 
-    pub fn get_exif(file: &File) -> Result<exif::Exif, exif::Error> {
-        let bytes: &mut std::io::BufReader<&File>
-                                                = &mut std::io::BufReader::new(file);
-        let exif: Result<exif::Exif, exif::Error>
-                                                = exif::Reader::new().read_from_container(bytes);
-    
+    pub fn get_exif(file: &File) -> Result<Exif, Error> {
+        let bytes: &mut BufReader<&File>
+                                    = &mut BufReader::new(file);
+        let exif: Result<Exif, Error>
+                                    = exif::Reader::new().read_from_container(bytes);
+
         exif
     }
 
