@@ -1,5 +1,5 @@
 use std::collections::HashMap ;
-use reqwest::{ header::USER_AGENT, Client, Error, Response };
+use reqwest::{ Client, Error, Response };
 use regex::Regex;
 use crate::parse_flags;
 use crate::client::parse_document::document;
@@ -15,7 +15,7 @@ pub fn  try_insert_hmap(regex: &Result<Regex, regex::Error>,
 
             if let Some(capture) = res_captures {
                 let res_url = capture.get(0);
-                println!(":{res_url:?}");
+
                 if let Some(url) = res_url {
                     if !url.is_empty() {
                         match k {
@@ -47,7 +47,7 @@ pub fn  try_insert_hmap(regex: &Result<Regex, regex::Error>,
  * Call server (request) to parse
  */
 async fn get_url_header(client: &Client, path: &str) -> Result<Response, Error> {
-    let res: Result<Response, Error> = client.get(path).header(USER_AGENT, "Reqwest/0.12.8").send().await;
+    let res: Result<Response, Error> = client.get(path).send().await;
 
     res
 }
@@ -70,12 +70,13 @@ pub async fn url_helper(options: &parse_flags::parse::OptionUser, cli: &Client,
                 let content_type: Option<&reqwest::header::HeaderValue>
                             = r.headers().get("content-type");
                 let res: bool = img::check_image_type(&content_type);
-                if !res {
-                    let txt: Result<String, Error> = r.text().await;
 
-                    match txt {
-                        Ok(r) => {
-                            find_input = document::parse_doc(&options, cli, &r, hmap_url).await;
+                if !res {
+                    let res_txt: Result<String, Error> = r.text().await;
+
+                    match res_txt {
+                        Ok(txt) => {
+                            find_input = document::parse_doc(&options, cli, &txt, hmap_url).await;
                         },
                         Err(e) => {
                             eprintln!("Get Url Error: {e}");

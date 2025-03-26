@@ -29,4 +29,4 @@ fclean:
 re:
 	fclean all
 
-.PHONY: all leak clean fclean re
+.PHONY: all download leak clean fclean re

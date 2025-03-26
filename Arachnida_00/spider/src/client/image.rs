@@ -47,17 +47,20 @@ pub mod img {
     }
 
     /*
+        Split path Folder and image
         Create directory and it's childs
     */
-    fn create_dir(dir_path: &mut String, id: usize) {
+    fn create_dir(dir_path: &mut String, id: usize) -> bool {
         let _file_name: String = dir_path.split_off(id);
         let result_dir: Result<(), std::io::Error> = create_dir_all(dir_path);
 
-        match result_dir {
-            Ok(_) => {},
+        return match result_dir {
+            Ok(_) => {
+                return true;
+            },
             Err(e) => {
                 eprintln!("Something went wrong wih directories creation: {e}");
-                ()
+                false
             },
         }
     }
@@ -109,7 +112,10 @@ pub mod img {
         }
     }
 
-    /* Start of image creation, call all functions to create an image */
+    /*
+     * Start of image creation, call all functions to create an image
+     * 
+     */
     pub async fn process_image(i: Response, options: &parse::OptionUser) -> Result<(), Error> {
         let content_type: Option<&reqwest::header::HeaderValue>
                                 = i.headers().get("content-type");
@@ -126,8 +132,11 @@ pub mod img {
         match idx {
             Some(id) => {
                 if 1 < id {
-                    create_dir(&mut relative_path, id);
-                    create_image(&path_clone, &i.bytes().await?);
+                    if create_dir(&mut relative_path, id) {
+                        create_image(&path_clone, &i.bytes().await?);
+                    } else {
+                        eprintln!("Something went wrong while creating directories, couldn't register image.");
+                    }
                 } else {
                     create_image(&path_clone, &i.bytes().await?);
                 }
@@ -163,8 +172,7 @@ pub mod img {
 
     pub async fn  get_images(options: &parse::OptionUser, cli: &Client,
                         doc: &Document, hmap_url: &mut HashMap<String, bool>) {
-        let reg_str: String = String::from("^(https?://") + options.website_name.as_str() + ")*";
-        let regex: Result<Regex, regex::Error> = Regex::new(reg_str.as_str());
+        let regex: Result<Regex, regex::Error> = Regex::new(r"^https?://[\w\d.-]*");
         let img_dom: Find<'_, Name<&str>> = doc.find(Name("img"));
 
         for f in img_dom.filter_map(|f| f.attr("src")) {

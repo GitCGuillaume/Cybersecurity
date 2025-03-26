@@ -9,7 +9,7 @@ fn launch_connection(is_recursive: bool, max_depth: &mut String,
             println!("Recusivity is not activated, set maximum depth to 1 by default.");
         }
         max_depth.clear();
-        max_depth.push_str("1");
+        max_depth.push_str("0");
     }
     let max_depth: Result<i32, _> = max_depth.parse();
     

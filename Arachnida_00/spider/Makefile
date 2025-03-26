@@ -18,4 +18,8 @@ fclean:
 re:
 	fclean all
 
-.PHONY: all leak clean fclean re
+show:
+	@echo "https://demo.cyotek.com/html/elements/img.php"
+	@echo "https://webscraper.io/test-sites"
+
+.PHONY: all leak clean fclean re show
