@@ -25,11 +25,14 @@ fn main() {
         return ;
     }
     for i in argv {
+        println!("File: {i}");
         let res_file: Result<File, std::io::Error> = get_file(&i);
 
         match res_file {
             Ok(file) => {
-                show_content_type(&i);
+                if !show_content_type(&file) {
+                    break ;
+                }
                 show_image_dimension(&i);
                 let res_metadata: Result<std::fs::Metadata, std::io::Error> = get_metadata(&file);
 

@@ -2,31 +2,49 @@ pub mod utils_metadata;
 pub mod utils_exif;
 
 pub mod handle_file {
-    use std::fs::File;
-    use infer::Type;
+    use std::{fs::File,
+        io::{
+            Read,
+            Seek
+        }
+    };
     use image;
 
     /*
-     * Show type file
+     * Show type file from File
      */
-    pub fn show_content_type(path: &String) {
-        let content_type: Result<Option<Type>, std::io::Error> = infer::get_from_path(path);
+    pub fn show_content_type(file: &File) -> bool {
+        let mut vec: Vec<u8> = Vec::new();
+        let mut clone_file: &File = file.to_owned();
+        let res_size: Result<usize, std::io::Error> = clone_file.read_to_end(&mut vec);
+        let res_rewind = clone_file.rewind();
 
-        match content_type {
-            Ok(content) => {
-               match content {
-                   Some(mime) => {
-                        println!("Content-type/Mime: {}", mime.mime_type());
-                   },
-                   None => {
-                    eprintln!("No Mime/Content-type");
-                   },
-               }
-            },
-            Err(e) => {
-                eprintln!("Error: {e}");
-            },
+        if let Err(err) = res_rewind {
+            eprintln!("Couldn't rewind file buffer: {err}");
+            return false;
         }
+        match res_size {
+            Ok(size) => {
+                if 0 < size {
+                    let content_type = infer::get(&vec);
+
+                    match content_type {
+                        Some(mime) => {
+                             println!("Content-type/Mime: {}", mime.mime_type());
+                        },
+                        None => {
+                         eprintln!("No Mime/Content-type");
+                        },
+                    }
+                } else {
+                    eprintln!("File has not bytes, couldn't show content-type.");
+                }
+            },
+            Err(err) => {
+                eprintln!("Coudln't read file: {err}");
+            }
+        }
+        true
     }
 
     pub fn show_image_dimension(path: &String) {
