@@ -7,10 +7,11 @@ pub mod document {
     use crate::parse_flags::parse::OptionUser;
     use crate::client::{ crawl, image };
   
+    //url_str link: https://demo.cyotek.com
     fn  get_links(options: &OptionUser, doc: &Document,
         hmap_url: &mut HashMap<String, bool>) -> bool {
-        let reg_str: String = String::from("^(https?://") + options.website_name.as_str() + ")*";
-        let regex: Result<Regex, regex::Error> = Regex::new(reg_str.as_str());
+        //let reg_str: String = String::from("^(https?://") + options.website_name.as_str() + ")*";
+        //let regex: Result<Regex, regex::Error> = Regex::new(reg_str.as_str());
         let a_dom: Find<'_, Name<&str>> = doc.find(Name("a"));
         let mut find_input: bool = false;
 
@@ -18,31 +19,39 @@ pub mod document {
         .for_each(|f| {
             find_input = true;
             if !f.starts_with("http") {
-                match &regex {
-                    Ok(reg) => {
-                        let res_captures: Option<regex::Captures<'_>> = reg.captures(&options.url);
-                        if let Some(capture) = res_captures {
-                            let res_url = capture.get(0);
-                            if let Some(url_str) = res_url {
+                let split: Vec<_> = options.url.split("/").collect();
+                //match &regex {
+                 //   Ok(reg) => {
+                   //     let res_captures: Option<regex::Captures<'_>> = reg.captures(&options.url);
+                        //if let Some(capture) = res_captures {
+                            //let res_url = capture.get(0);
+                            //if let Some(url_str) = res_url {
+                                println!("og url: {}", options.url);
+                                println!("F: {}", f);
+                        //        println!("url_str link: {}", url_str.as_str());
                                 let new_url: String;
-
                                 if !f.starts_with("/") {
-                                    new_url = String::from(url_str.as_str()) + "/" + f;
+                                    new_url = String::from(split[0]) + "//" + split[2] + "/" + f;
+                                    println!("NEW {}", new_url);
+                             //       new_url = String::from(url_str.as_str()) + "/" + f;
                                 } else {
-                                    new_url = String::from(url_str.as_str()) + f;
+                                    new_url = String::from(split[0]) + "//" + split[2] + f;
+                                    println!("NEW {}", new_url);
+                               //     new_url = String::from(url_str.as_str()) + f;
                                 }
-                                crawl::try_insert_hmap(&regex, hmap_url, &new_url, false);
-                            } else {
-                                eprintln!("Url parsing is wrong, is url from the crawled website?");
-                            }
-                        } else {
-                            eprintln!("Url parsing is wrong, is url from the crawled website?");
-                        }
-                    },
-                    Err(_) => {},
-                };
+                                crawl::try_insert_hmap(hmap_url, options, &new_url, false);
+                            //} else {
+                              //  eprintln!("Url parsing is wrong, is url from the crawled website?");
+                           // }
+                        //} else {
+                          //  eprintln!("Url parsing is wrong, is url from the crawled website?");
+                        //}
+                    //},
+                   // Err(_) => {},
+                //};
             } else {
-                crawl::try_insert_hmap(&regex, hmap_url, &f.to_owned(), false);
+                println!("URL: {}", f);
+                crawl::try_insert_hmap(hmap_url, options, &f.to_owned(), false);
             }
         });
         find_input

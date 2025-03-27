@@ -1,46 +1,76 @@
 use std::collections::HashMap ;
 use reqwest::{ Client, Error, Response };
 use regex::Regex;
+use crate::parse;
 use crate::parse_flags;
 use crate::client::parse_document::document;
 use crate::client::image::img;
 
-pub fn  try_insert_hmap(regex: &Result<Regex, regex::Error>,
-                        hmap_url: &mut HashMap<String, bool>, f: &String, is_img: bool) {
+pub fn  try_insert_hmap(hmap_url: &mut HashMap<String, bool>, options: &parse::OptionUser,
+    f: &String, is_img: bool) {
+    println!("TRY INSER: {}", is_img);
     let k: Option<(&String, &bool)> = hmap_url.get_key_value(f);
+    println!("TRY INSER: {}", is_img);
+    let split: Vec<_> = f.split("/").collect();
+    println!("TRY INSER: {}", is_img);
+    println!("cmp {0} {1}", split[2], options.website_name);
+    if is_img {
+        match k {
+            Some(_) => (),
+            None => {
+                hmap_url.insert(String::from("img: ") + f.as_str(), true);
+            },
+        }
+        return ;
+    }
+    println!("cmp {0} {1}", split[2], options.website_name);
+    if split.len() < 3 {
+        eprintln!("Url of wrong format, can't register in list URL.");
+        return ;
+    }
+    println!("cmp {0} {1}", split[2], options.website_name);
+    if split[2].is_empty() {
+        eprintln!("Hostname in url is missing, can't register in list URL.");
+        return ;
+    }
+    println!("cmp {0} {1}", split[2], options.website_name);
+    if split[2] != options.website_name {
+        eprintln!("Url: {f}");
+        eprintln!("Url not accepted, must be of same website crawled.");
+        return ;
+    }
+   // match &regex {
+    //    Ok(reg) => {
+           // let res_captures: Option<regex::Captures<'_>> = reg.captures(&f);
 
-    match &regex {
-        Ok(reg) => {
-            let res_captures: Option<regex::Captures<'_>> = reg.captures(&f);
+            //if let Some(capture) = res_captures {
+              //  let res_url = capture.get(0);
 
-            if let Some(capture) = res_captures {
-                let res_url = capture.get(0);
-
-                if let Some(url) = res_url {
-                    if !url.is_empty() {
-                        match k {
-                            Some(_) => (),
-                            None => {
-                                if is_img {
-                                    hmap_url.insert(f.to_owned(), true);
-                                } else {
-                                    hmap_url.insert(f.to_owned(), false);
-                                }
-                            },
-                        }
-                    } else {
-                        eprintln!("Url: {f}");
-                        eprintln!("Url not accepted, must be of same website crawled.");
-                    }
-                }
+                //if let Some(url) = res_url {
+                    //if !url.is_empty() {
+    match k {
+        Some(_) => (),
+        None => {
+            if is_img {
+                hmap_url.insert(String::from("img: ") + f.as_str(), true);
             } else {
-                eprintln!("Couldn't capture url");
+                hmap_url.insert(f.to_owned(), false);
             }
         },
-        Err(err) => {
-            eprintln!("Error: {err}");
-        }
     }
+                    /*} else {
+                        eprintln!("Url: {f}");
+                        eprintln!("Url not accepted, must be of same website crawled.");
+                    }*/
+                //}
+           // } else {
+           //     eprintln!("Couldn't capture url");
+           // }
+        //},
+        //Err(err) => {
+        //    eprintln!("Error: {err}");
+      //  }
+    //}
 }
 
 /*

@@ -1,6 +1,32 @@
+use regex::Regex;
 use tokio::runtime::Runtime;
 mod client;
 mod parse_flags;
+use crate::parse_flags::parse;
+
+fn get_name_website(url: &String) -> String {
+    let find_idx = url.find("http://");
+
+    if find_idx == None {
+        let find_idx = url.find("https://");
+        
+        if find_idx == None {
+            eprintln!("Please provide a correct URL with correct protocol format: {url}");
+            return "".to_owned();
+        }
+    }
+    let split: Vec<_> = url.split("/").collect();
+println!("split:{:?}", split);
+    if split.len() < 3 {
+        eprintln!("Please provide a correct URL with correct protocol format: {url}");
+        return "".to_owned();
+    }
+    if split[2].is_empty() {
+        eprintln!("Please provide a correct URL.");
+        return "".to_owned();
+    }
+    return String::from(split[2]);
+}
 
 fn launch_connection(is_recursive: bool, max_depth: &mut String,
     url: &String, path: &String) {
@@ -12,7 +38,17 @@ fn launch_connection(is_recursive: bool, max_depth: &mut String,
         max_depth.push_str("0");
     }
     let max_depth: Result<i32, _> = max_depth.parse();
-    
+    let website_name: String = get_name_website(url);
+
+    if website_name.is_empty() {
+        return ;
+    }
+    let options: parse::OptionUser = parse::OptionUser {
+        url: url.clone(),
+        folder: path.clone(),
+        website_name: website_name.to_owned()
+    };
+
     match max_depth {
         Ok(max) => {
              let rt: Result<Runtime, std::io::Error>  = Runtime::new();
@@ -20,7 +56,7 @@ fn launch_connection(is_recursive: bool, max_depth: &mut String,
              match rt {
                 Ok(r) => {
                     r.block_on(async {
-                        client::connect(&url, &path, max).await;
+                        client::connect(&options, max).await;
                     });
                 },
                 Err(e) => {eprintln!("Error: {e}")},
