@@ -1,7 +1,12 @@
-use std::collections::HashMap ;
+use futures::{
+    prelude::Future,
+    future::FutureExt
+};
+use std::collections::HashMap;
 use reqwest::{ Client, Error };
 use regex::Regex;
 use std::boxed::Box;
+use core::pin::Pin;
 use crate::parse_flags::parse;
 mod crawl;
 mod parse_document;
@@ -50,18 +55,26 @@ fn get_name_website(url: &String) -> String {
     }
 }
 
-async fn recursive_download(options: &parse::OptionUser, cli: &Client,
-                    hmap_url: &mut HashMap<String, bool>,
-                    step: i32, max_depth: i32)  {
-    if max_depth <= step {
-        return ;
-    }
-    println!("-------------- Depth Step: {0} --------------", step + 1);
-    let _find_input: bool = crawl::url_helper(&options, &cli, hmap_url).await;
-    if !_find_input {
-        return ;
-    }
-    Box::pin(recursive_download(&options, cli, hmap_url, step + 1, max_depth)).await;
+/*
+ * Recursively download
+ * School rustc version is 1.7.5, can't use Box::pin
+ * https://docs.rs/futures/0.3.31/futures/prelude/trait.Future.html
+ */
+fn recursive_download<'a>(options: &'a parse::OptionUser, cli: &'a Client,
+                    hmap_url: &'a mut HashMap<String, bool>,
+                    step: i32, max_depth: i32) -> Pin<Box<dyn Future<Output = ()> + 'a>> {
+    async move {
+        if max_depth <= step {
+            return ;
+        }
+        println!("-------------- Depth Step: {0} --------------", step + 1);
+        let _find_input: bool = crawl::url_helper(&options, &cli, hmap_url).await;
+
+        if !_find_input {
+            return ;
+        }
+        recursive_download(&options, cli, hmap_url, step + 1, max_depth).await;
+    }.boxed_local()
 }
 
 pub async fn connect(url: &String, path: &String, max_depth: i32) {
