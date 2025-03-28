@@ -49,18 +49,9 @@ fn recursive_download<'a>(options: &'a parse::OptionUser, cli: &'a Client,
 }
 
 pub async fn connect(options: &parse::OptionUser, max_depth: i32) {
-    /*let website_name: String = get_name_website(url);
 
-    if website_name.is_empty() {
-        return ;
-    }*/
     let mut hmap_url: HashMap<String, bool> = HashMap::new();
     let client: &Result<Client, Error> = &connect_client().await;
-    /*let options: parse::OptionUser = parse::OptionUser {
-        url: url.clone(),
-        folder: path.clone(),
-        website_name: website_name.to_owned()
-    };*/
 
     hmap_url.insert(options.url.clone(), false);
     match client {

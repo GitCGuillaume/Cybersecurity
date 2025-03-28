@@ -1,4 +1,3 @@
-use regex::Regex;
 use tokio::runtime::Runtime;
 mod client;
 mod parse_flags;
@@ -16,7 +15,7 @@ fn get_name_website(url: &String) -> String {
         }
     }
     let split: Vec<_> = url.split("/").collect();
-println!("split:{:?}", split);
+
     if split.len() < 3 {
         eprintln!("Please provide a correct URL with correct protocol format: {url}");
         return "".to_owned();
@@ -28,42 +27,32 @@ println!("split:{:?}", split);
     return String::from(split[2]);
 }
 
-fn launch_connection(is_recursive: bool, max_depth: &mut String,
-    url: &String, path: &String) {
-    if !is_recursive {
-        if max_depth != "5" {
+/*
+ * https://github.com/tokio-rs/tokio/issues/4756
+ */
+fn launch_connection(options: &mut parse::OptionUser) {
+    if !options.is_recursive {
+        if options.max_depth != 5 {
             println!("Recusivity is not activated, set maximum depth to 1 by default.");
         }
-        max_depth.clear();
-        max_depth.push_str("0");
+        options.max_depth = 0;
     }
-    let max_depth: Result<i32, _> = max_depth.parse();
-    let website_name: String = get_name_website(url);
+    let website_name: String = get_name_website(&options.url);
 
     if website_name.is_empty() {
         return ;
     }
-    let options: parse::OptionUser = parse::OptionUser {
-        url: url.clone(),
-        folder: path.clone(),
-        website_name: website_name.to_owned()
-    };
+    options.website_name = website_name.to_owned();
+    let rt: Result<Runtime, std::io::Error>  = Runtime::new();
 
-    match max_depth {
-        Ok(max) => {
-             let rt: Result<Runtime, std::io::Error>  = Runtime::new();
-
-             match rt {
-                Ok(r) => {
-                    r.block_on(async {
-                        client::connect(&options, max).await;
-                    });
-                },
-                Err(e) => {eprintln!("Error: {e}")},
-            }
+    match rt {
+        Ok(r) => {
+            r.block_on(async {
+                client::connect(&options, options.max_depth).await;
+            });
         },
-        Err(_) => {
-            eprintln!("Please provide a valid max depth.");
+        Err(e) => {
+            eprintln!("Error: {e}")
         },
     }
 }
@@ -77,33 +66,30 @@ fn launch_connection(is_recursive: bool, max_depth: &mut String,
  */
 fn main() {
     let args: std::iter::Skip<std::env::Args> = std::env::args().skip(1);
-    let mut max_depth: String = String::from("5");
-    let mut path: String = String::from("./data/");
-    let mut url: String = String::from("");
-    let mut is_recursive: bool = false;
-    let mut concatenate_flag: String = String::from("");
+    let mut options: parse::OptionUser = parse::OptionUser {
+        url: String::from(""),
+        folder: String::from("./data/"),
+        website_name: String::from(""),
+        max_depth: 5,
+        is_recursive: false
+    };
+    let mut concat: String = String::from("");
 
     for i in args {
-        if i.starts_with("-r") {
-            is_recursive = true;
-        }
-        if i == "-rl" || i == "-rp" || i == "-p" || i == "-l" {
-            concatenate_flag = i;
-        } else {
-            if i.find('-') == Some(0) || concatenate_flag != "" {
-                concatenate_flag += i.as_str();
-                parse_flags::parse::find_flags(&concatenate_flag, is_recursive,
-                    &mut max_depth, &mut path);
-                concatenate_flag = String::from("");
-            } else {
-                url = String::from(i);
-            }
-        }
+        concat.push_str(i.as_str());
+        concat.push(' ');
     }
-    if url != "" {
-        launch_connection(is_recursive, &mut max_depth,
-            &url, &path);
-    } else {
-        eprintln!("An url is needed.");
+    concat = parse_flags::parse::get_url(&mut concat, &mut options);
+    if concat.is_empty() {
+        eprintln!("Please provide a URL with of format of (http(s)://name)");
+        return ;
     }
+    if parse_flags::parse::find_flags(&concat, &mut options) == false {
+        println!("{0} {1} {2} {3} {4}", options.url, options.folder, options.website_name, options.max_depth, options.is_recursive);
+        return ;
+    }
+    println!("{0} {1} {2} {3} {4}", options.url, options.folder, options.website_name, options.max_depth, options.is_recursive);
+    println!("max depth:{}", options.max_depth);
+    println!("url: {}", options.url);
+    launch_connection(&mut options);
 }

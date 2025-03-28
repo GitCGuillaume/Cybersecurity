@@ -4,7 +4,6 @@ pub mod img {
     use std::fs::{ create_dir_all, File };
     use select::document::{ Document, Find };
     use select::predicate::Name;
-    use regex::Regex;
     use std::io::prelude::Write;
     use crate::parse_flags::parse;
     use crate::client::crawl;
@@ -172,45 +171,20 @@ pub mod img {
 
     pub async fn  get_images(options: &parse::OptionUser, cli: &Client,
                         doc: &Document, hmap_url: &mut HashMap<String, bool>) {
-        //let regex: Result<Regex, regex::Error> = Regex::new(r"^https?://[\w\d.-]*");
         let img_dom: Find<'_, Name<&str>> = doc.find(Name("img"));
 
         for f in img_dom.filter_map(|f| f.attr("src")) {
             if !f.starts_with("http") {
                 let split: Vec<_> = options.url.split("/").collect();
-                println!("og url: {}", options.url);
-                                println!("F: {}", f);
-                //match &regex {
-                  //  Ok(reg) => {
-                       // let res_captures: Option<regex::Captures<'_>> = reg.captures(&options.url);
-                       // if let Some(capture) = res_captures {
-                            //let res_url = capture.get(0);
-                            //if let Some(url_str) = res_url {
-                              //  println!("url_str image: {}", url_str.as_str());
-                                let new_url: String;
+                let new_url: String;
 
-                                if !f.starts_with("/") {
-                                //    new_url = String::from(url_str.as_str()) + "/" + f;
-                                    new_url = String::from(split[0]) + "//" + split[2] + "/" + f;
-                                    println!("NEWIMG  {}", new_url);
-                                } else {
-                                    new_url = String::from(split[0]) + "//" + split[2] + f;
-                                    println!("NEW IMG{}", new_url);
-                                 //   new_url = String::from(url_str.as_str()) + f;
-                                }
-                                crawl::try_insert_hmap(hmap_url, options, &new_url, true);
-                                let _ = send_url_file(cli, options, &new_url).await;
-                         //   } else {
-                           //     eprintln!("Url parsing is wrong, is url from the crawled website?");
-                           // }
-                        //} else {
-                          //  eprintln!("Url parsing is wrong, is url from the crawled website?");
-                        //}
-                    //},
-                   // Err(err) => {
-                   //     eprintln!("Error: {err}");
-                 //   },
-               // };
+                if !f.starts_with("/") {
+                    new_url = String::from(split[0]) + "//" + split[2] + "/" + f;
+                } else {
+                    new_url = String::from(split[0]) + "//" + split[2] + f;
+                }
+                crawl::try_insert_hmap(hmap_url, options, &new_url, true);
+                let _ = send_url_file(cli, options, &new_url).await;
             } else {
                     crawl::try_insert_hmap(hmap_url, options, &f.to_owned(), true);
                     let _ = send_url_file(cli, options, &f).await;
