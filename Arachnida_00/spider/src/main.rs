@@ -1,4 +1,3 @@
-use tokio::runtime::Runtime;
 mod client;
 mod parse_flags;
 use crate::parse_flags::parse;
@@ -30,7 +29,7 @@ fn get_name_website(url: &String) -> String {
 /*
  * https://github.com/tokio-rs/tokio/issues/4756
  */
-fn launch_connection(options: &mut parse::OptionUser) {
+async fn launch_connection(options: &mut parse::OptionUser) {
     if !options.is_recursive {
         if options.max_depth != 5 {
             println!("Recusivity is not activated, set maximum depth to 1 by default.");
@@ -43,18 +42,22 @@ fn launch_connection(options: &mut parse::OptionUser) {
         return ;
     }
     options.website_name = website_name.to_owned();
-    let rt: Result<Runtime, std::io::Error>  = Runtime::new();
+    //let rt: Result<Runtime, std::io::Error>  = Runtime::new();
 
-    match rt {
-        Ok(r) => {
-            r.block_on(async {
+    //match rt {
+      //  Ok(r) => {
+           // let join = task::spawn(async {
                 client::connect(&options, options.max_depth).await;
-            });
-        },
+           // });
+           // let result = join.await;
+           // r.block_on(async {
+           //     client::connect(&options, options.max_depth).await;
+           // });
+       /* },
         Err(e) => {
             eprintln!("Error: {e}")
         },
-    }
+    }*/
 }
 
 /*
@@ -64,7 +67,8 @@ fn launch_connection(options: &mut parse::OptionUser) {
  *  -l depth recursivity, default max depth is 5
  *  -p choose image path to register
  */
-fn main() {
+#[tokio::main]
+async fn main() {
     let args: std::iter::Skip<std::env::Args> = std::env::args().skip(1);
     let mut options: parse::OptionUser = parse::OptionUser {
         url: String::from(""),
@@ -91,5 +95,5 @@ fn main() {
     println!("{0} {1} {2} {3} {4}", options.url, options.folder, options.website_name, options.max_depth, options.is_recursive);
     println!("max depth:{}", options.max_depth);
     println!("url: {}", options.url);
-    launch_connection(&mut options);
+    launch_connection(&mut options).await;
 }

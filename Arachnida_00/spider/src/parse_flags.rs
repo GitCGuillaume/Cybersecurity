@@ -123,11 +123,11 @@ pub mod parse {
     /* Parse flags */
     pub fn find_flags(concat: &String, options: &mut OptionUser) -> bool {
         let mut mem_str: String = String::from("");
-        let (r_bool, r_pos) = parse_flags::parse_flags(concat, &"-r");
+        let (r_bool, _r_pos) = parse_flags::parse_flags(concat, &"-r");
         let split: Vec<_> = concat.split(" ").collect();
         let mut next = false;
 
-        if r_bool && r_pos == 0 {
+        if r_bool {
             options.is_recursive = true;
         }
         for i in split {

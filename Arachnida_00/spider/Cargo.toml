@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 futures = "=0.3.31"
+zerofrom = "=0.1.0"
 native-tls = "=0.2.12"
 litemap = "=0.7.4"
 select = "=0.6.0"
