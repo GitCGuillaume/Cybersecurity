@@ -1,6 +1,6 @@
 pub mod document {
     use std::collections::HashMap ;
-    use reqwest::Client;
+    use reqwest::blocking::Client;
     use select::document::{ Document, Find };
     use select::predicate::Name;
     use crate::parse_flags::parse::OptionUser;
@@ -31,12 +31,12 @@ pub mod document {
         find_input
     }
 
-    pub async fn parse_doc(options: &OptionUser, cli: &Client,
+    pub fn parse_doc(options: &OptionUser, cli: &Client,
         text: &String, hmap_url: &mut HashMap<String, bool>) -> bool {
         let doc: Document = Document::from(text.as_str());
         let find_input: bool = get_links(&options, &doc, hmap_url);
 
-        image::img::get_images(options, cli, &doc, hmap_url).await;
+        image::img::get_images(options, cli, &doc, hmap_url);
         find_input
     }
 }

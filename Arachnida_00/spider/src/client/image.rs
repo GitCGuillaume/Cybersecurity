@@ -1,5 +1,6 @@
 pub mod img {
-    use reqwest::{ header::USER_AGENT, Client, Error, Response };
+    use reqwest::blocking::{ Client, Response };
+    use reqwest::{header::USER_AGENT, Error};
     use std::collections::HashMap ;
     use std::fs::{ create_dir_all, File };
     use select::document::{ Document, Find };
@@ -115,7 +116,7 @@ pub mod img {
      * Start of image creation, call all functions to create an image
      * 
      */
-    pub async fn process_image(i: Response, options: &parse::OptionUser) -> Result<(), Error> {
+    pub fn process_image(i: Response, options: &parse::OptionUser) -> Result<(), Error> {
         let content_type: Option<&reqwest::header::HeaderValue>
                                 = i.headers().get("content-type");
         let res: bool = check_image_type(&content_type);
@@ -132,12 +133,12 @@ pub mod img {
             Some(id) => {
                 if 1 < id {
                     if create_dir(&mut relative_path, id) {
-                        create_image(&path_clone, &i.bytes().await?);
+                        create_image(&path_clone, &i.bytes()?);
                     } else {
                         eprintln!("Something went wrong while creating directories, couldn't register image.");
                     }
                 } else {
-                    create_image(&path_clone, &i.bytes().await?);
+                    create_image(&path_clone, &i.bytes()?);
                 }
             },
             None => {
@@ -150,14 +151,14 @@ pub mod img {
     /*
     * Function wrapping image creation and validation
     */
-    async fn send_url_file(client: &Client, options: &parse::OptionUser, path: &str,) -> Result<(), Error> {
+    fn send_url_file(client: &Client, options: &parse::OptionUser, path: &str,) -> Result<(), Error> {
         let res: Result<Response, Error> = client.get(path)
             .header(USER_AGENT, "Reqwest/0.12.8")
-            .send().await;
+            .send();
 
         let res: Result<(), Error> = match res {
             Ok(i) => {
-                let _ = process_image(i, options).await;
+                let _ = process_image(i, options);
 
                 Ok(())
             },
@@ -169,7 +170,7 @@ pub mod img {
         res
     }
 
-    pub async fn  get_images(options: &parse::OptionUser, cli: &Client,
+    pub fn  get_images(options: &parse::OptionUser, cli: &Client,
                         doc: &Document, hmap_url: &mut HashMap<String, bool>) {
         let img_dom: Find<'_, Name<&str>> = doc.find(Name("img"));
 
@@ -184,10 +185,10 @@ pub mod img {
                     new_url = String::from(split[0]) + "//" + split[2] + f;
                 }
                 crawl::try_insert_hmap(hmap_url, options, &new_url, true);
-                let _ = send_url_file(cli, options, &new_url).await;
+                let _ = send_url_file(cli, options, &new_url);
             } else {
                     crawl::try_insert_hmap(hmap_url, options, &f.to_owned(), true);
-                    let _ = send_url_file(cli, options, &f).await;
+                    let _ = send_url_file(cli, options, &f);
             }
         }
     }
