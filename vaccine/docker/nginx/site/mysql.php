@@ -9,6 +9,7 @@ try {
 		$type = $_GET['a'];
 	}
 	$query_str = "SELECT * from list where vals = '$type'";
+	var_dump($query_str);
 	$res = $dtb->query($query_str);
 	echo '<pre>', var_dump($res->fetchAll()) , '</pre>';
 	$res->closeCursor();
@@ -18,7 +19,7 @@ try {
 		$insert = "INSERT INTO list(vals) VALUES ('$post')";
 		$res = $dtb->prepare($insert);
 		$res2 = $res->execute();
-		echo 'res: <pre>', var_dump($res) , '</pre>';
+		print 'res: <pre>', var_dump($res) , '</pre>';
 		$res->closeCursor();
 	}
 	if ($_POST['hid']) {
