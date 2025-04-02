@@ -8,18 +8,17 @@ try {
 	if ($_GET['a']) {
 		$type = $_GET['a'];
 	}
-	$query_str = "SELECT * from list where vals = '$type'";
+	$query_str = "SELECT vals from list where vals = '$type'";
 	var_dump($query_str);
 	$res = $dtb->query($query_str);
 	echo '<pre>', var_dump($res->fetchAll()) , '</pre>';
 	$res->closeCursor();
 	if ($_POST['txt']) {
-		echo 'post_txt: ', $_POST['txt'];
 		$post = $_POST['txt'];
 		$insert = "INSERT INTO list(vals) VALUES ('$post')";
 		$res = $dtb->prepare($insert);
 		$res2 = $res->execute();
-		print 'res: <pre>', var_dump($res) , '</pre>';
+		echo 'res: <pre>', var_dump($res) , '</pre>';
 		$res->closeCursor();
 	}
 	if ($_POST['hid']) {
