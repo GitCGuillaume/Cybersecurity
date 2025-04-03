@@ -13,23 +13,40 @@ try {
 	$res = $dtb->query($query_str);
 	echo '<pre>', var_dump($res->fetchAll()) , '</pre>';
 	$res->closeCursor();
-	if ($_POST['txt']) {
+	/*if ($_POST['txt']) {
 		$post = $_POST['txt'];
 		$insert = "INSERT INTO list(vals) VALUES ('$post')";
+		echo 'res: <pre>', var_dump($insert) , '</pre>';
 		$res = $dtb->prepare($insert);
 		$res2 = $res->execute();
-		echo 'res: <pre>', var_dump($res) , '</pre>';
-		$res->closeCursor();
+		unset($res);
 	}
 	if ($_POST['hid']) {
 		echo 'post_hid: ', $_POST['hid'];
 		$post = $_POST['hid'];
 		$insert = "INSERT INTO list(vals) VALUES ('$post')";
+		echo 'res: <pre>', var_dump($insert) , '</pre>';
 		$res = $dtb->prepare($insert);
 		$res2 = $res->execute();
-		echo 'res: <pre>', var_dump($res) , '</pre>';
+		unset($res);
+	}*/
+	if ($_POST['txt']) {
+		$post = $_POST['txt'];
+		$query_str = "SELECT id, vals from list where vals = '$post'";
+		var_dump($query_str);
+		$res = $dtb->query($query_str);
+		echo '<pre>', var_dump($res->fetchAll()) , '</pre>';
 		$res->closeCursor();
 	}
+	if ($_GET['txt']) {
+		$post = $_GET['txt'];
+		$query_str = "SELECT id, vals from list where vals = '$post'";
+		var_dump($query_str);
+		$res = $dtb->query($query_str);
+		echo '<pre>', var_dump($res->fetchAll()) , '</pre>';
+		$res->closeCursor();
+	}
+
 	$query_str = "SELECT * from list";
 	$res = $dtb->query($query_str);
 	echo '<pre>', var_dump($res->fetchAll()) , '</pre>';
@@ -47,7 +64,14 @@ catch (PDOException $err) {
 	<title>Mysql infection</title>
 </head
 <body>
+	<h1>Post</h1>
 	<form action="mysql.php" method="post">
+		<input name="txt" type="text" />
+		<input name="hid"  type="hidden" />
+		<input type="submit" />
+	</form>
+	<h2>Get</h2>
+	<form action="mysql.php" method="get">
 		<input name="txt" type="text" />
 		<input name="hid"  type="hidden" />
 		<input type="submit" />

