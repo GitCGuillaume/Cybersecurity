@@ -64,13 +64,13 @@ catch (PDOException $err) {
 	<title>Sqlite infection</title>
 </head
 <body>
-	<h1>Post</h1>
+	<h1>Search Post</h1>
 	<form action="sqlite.php" method="post">
 		<input name="txt" type="text" />
 		<input name="hid"  type="hidden" />
 		<input type="submit" />
 	</form>
-	<h2>Get</h2>
+	<h2>Search Get</h2>
 	<form action="sqlite.php" method="get">
 		<input name="txt" type="text" />
 		<input name="hid"  type="hidden" />

