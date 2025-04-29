@@ -37,7 +37,7 @@ Ici nous recevons 2 packets, celui du client et de la cible avec le nom du fichi
 
 ![Capture d’écran du 2025-04-29 16-44-37](https://github.com/user-attachments/assets/1bac9253-080b-441e-9b67-59b3b3f620d3)
 
-Lorsque le programme se ferme, il restore les tables ARP du client et de la cible.
+Lorsque le programme se ferme, il restaure les tables ARP du client et de la cible.
 ![Capture d’écran du 2025-04-29 16-45-29](https://github.com/user-attachments/assets/aa3938b7-231f-4871-8a46-d5757c597468)
 
 ![Capture d’écran du 2025-04-29 16-45-45](https://github.com/user-attachments/assets/456f6f46-0493-482d-94e7-3abbd34bb0d9)
