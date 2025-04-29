@@ -29,15 +29,5 @@ services:
     networks:
       - inquisitor_net
 
-  client:
-    container_name: client
-    build: client
-    networks:
-      - inquisitor_net
-  
-        #tcpdump:
-      #container_name: tcpdump
-     #build: tcpdump
-
 networks:
   inquisitor_net:
