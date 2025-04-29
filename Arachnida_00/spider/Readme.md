@@ -1,4 +1,4 @@
-Le programme Spider en langage Rust navigue depuis une URL et télécharge toutes les images trouvées
+Le programme Spider en langage Rust navigue depuis une URL et télécharge toutes les images trouvées.
 
 ## Options
 ```bash
