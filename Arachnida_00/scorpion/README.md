@@ -2,7 +2,7 @@
 
 Ce projet consiste à afficher les métadonnées d'un fichier et les données EXIF si disponibles.
 
-Format exif supportés:
+Formats exif supportés:
    -  JPEG
    -  PNG
    -  TIFF
