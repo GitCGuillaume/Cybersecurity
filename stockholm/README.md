@@ -1,6 +1,6 @@
 # Stockholm
 
-Projet Rust Linux à éducation uniquement, ne pas utiliser dans un environnement réel ou à des fins malicieux.
+Projet Rust sous Linux à éducation uniquement, ne pas utiliser dans un environnement réel ou à des fins malicieux.
 
 Stockholm est un projet malware basé sur [Wannacry](https://fr.wikipedia.org/wiki/WannaCry) qui infectera tous les fichiers comportant les mêmes extensions que le malware WannaCry.
 
