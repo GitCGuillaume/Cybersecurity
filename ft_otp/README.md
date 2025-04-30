@@ -1,6 +1,6 @@
 # ft_otp
 
-Projet qui consiste à générer un mot de passe à usage unique sous le langage Rust.
+Projet qui consiste à générer un mot de passe à usage unique sous le langage Rust à l'aide d'OpenSSL.
 
 Liste de spécifications techniques:
 - RFC [HOTP](https://www.ietf.org/rfc/rfc4226.txt)
