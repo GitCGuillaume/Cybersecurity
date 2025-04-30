@@ -13,7 +13,7 @@ pub fn get_infection_path(path: &String) -> Result<ReadDir, std::io::Error> {
     let env = env!("HOME");
     let mut path_user: String = String::from(path);
     path_user.insert_str(0, env);
-    println!("env: {}", path_user);
+    println!("Folder infection path : {}", path_user);
     return read_dir(path_user);
 }
 /* Check infection folder existence */

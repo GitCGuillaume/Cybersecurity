@@ -90,6 +90,7 @@ pub fn desinfect(list: &Flags, path: &PathBuf) -> bool {
         if let Ok(mut file) = OpenOptions::new()
                                 .read(true)
                                 .write(true)
+                                .append(true)
                                 .create(false)
         .open(path_str){
             if let Ok(_) = file.read_to_end(&mut buf_in) {

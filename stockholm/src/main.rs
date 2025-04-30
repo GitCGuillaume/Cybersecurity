@@ -21,7 +21,6 @@ fn run_commands_flags(list: &Flags) -> bool {
     false
 }
 
-
 /*
  * Start program
  * Set flags
@@ -37,24 +36,19 @@ fn main() -> ExitCode {
         version: false,
         silent: false
     };
+
     if args.len() == 0 {
-        return ExitCode::SUCCESS;
+        eprintln!("Please provide a key or a command (--help).");
+        return ExitCode::FAILURE;
     }
     let mut value: String = String::new();
+    
     for i in args {
-        if i == "-r" {
-            value = i.to_owned();
-            continue;
-        } else if 0 < value.len() {
-            value.push_str(i.as_str());
-        } else {
-            value.clear();
-            value = i.to_owned();
-        }
-        get_flags(&value, &mut list);
-        set_key(&value, &mut list);
-        value.clear();
+        value.push_str(i.as_str());
     }
+    get_flags(&value, &mut list);
+    set_key(&value, &mut list);
+    value.clear();
     if run_commands_flags(&list) {
         return ExitCode::SUCCESS;
     }
