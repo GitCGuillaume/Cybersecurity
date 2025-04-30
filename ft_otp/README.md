@@ -1,6 +1,6 @@
 # ft_otp
 
-Projet qui consiste à générer un code à 6 chiffres à usage unique sous le langage Rust.
+Projet qui consiste à générer un mot de passe à usage unique sous le langage Rust.
 
 Liste de spécifications techniques:
 - RFC [HOTP](https://www.ietf.org/rfc/rfc4226.txt)
