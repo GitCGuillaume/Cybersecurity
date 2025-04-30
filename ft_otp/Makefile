@@ -12,6 +12,7 @@ clean:
 fclean:
 	cargo clean
 	rm -f ft_otp
+	rm -f ft_otp.key
 
 re:
 	fclean all
